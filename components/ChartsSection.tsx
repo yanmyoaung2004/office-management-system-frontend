@@ -86,9 +86,9 @@ export default function ChartsSection({
         {/* Pie Chart - Student Location Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Students by Location</CardTitle>
+            <CardTitle>Enrollment by Location</CardTitle>
             <CardDescription>
-              Distribution of students across cities
+              Distribution of enrollments across cities
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -128,6 +128,52 @@ export default function ChartsSection({
             )}
           </CardContent>
         </Card>
+
+        {/* Pie Chart - Student Location Distribution */}
+        {/* <Card>
+          <CardHeader>
+            <CardTitle>Students</CardTitle>
+            <CardDescription>
+              Distribution of enrollments across cities
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {locationData.length > 0 ? (
+              <div className="h-75 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={locationData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      // FIX: Access custom data via the payload property
+                      label={(props: PieLabelRenderProps) => {
+                        const { payload } = props;
+                        return `${payload.location}: ${payload.value}`;
+                      }}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {locationData.map((_, index) => (
+                        <Cell
+                          key={`cell-location-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-75 text-gray-500">
+                No data available
+              </div>
+            )}
+          </CardContent>
+        </Card> */}
       </div>
     </div>
   );
