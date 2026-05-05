@@ -1,11 +1,17 @@
 "use client";
 
 import useSWR from "swr";
-import type { Intake, UserRole, Major } from "@/types";
+import {
+  type Intake,
+  type UserRole,
+  type Major,
+  CAN_VIEW_INTAKES,
+  CAN_VIEW_MAJORS,
+} from "@/types";
 // Components
 import { IntakeManagement } from "@/components/intake-management";
 import { apiDelete, apiPost, apiPut } from "@/lib/api-client";
-import { useAuth } from "@/hooks/useUserRole";
+import { useAuth } from "@/context/AuthContext";
 
 interface PaginatedResponse<T> {
   success: boolean;
@@ -24,14 +30,25 @@ const swrOptions = {
   dedupingInterval: 60000, // Consider data "fresh" for 1 minute
 };
 
-export default function Home() {
+export default function Page() {
   const { user, isLoading } = useAuth();
   const currentRole = user?.role as UserRole;
+
   const { data: intakesResponse, mutate: mutateIntakes } = useSWR<
     PaginatedResponse<Intake>
-  >(currentRole !== "staff" ? "/intakes?page=1&limit=200" : null, swrOptions);
+  >(
+    // Scalable check: Is the user's role in the approved list?
+    currentRole && CAN_VIEW_INTAKES.includes(currentRole)
+      ? "/admission/intakes?page=1&limit=200"
+      : null,
+    swrOptions,
+  );
+
   const { data: majorsResponse } = useSWR<PaginatedResponse<Major>>(
-    currentRole !== "staff" ? "/majors?page=1&limit=200" : null,
+    // Scalable check: Is the user's role in the approved list?
+    currentRole && CAN_VIEW_MAJORS.includes(currentRole)
+      ? "/admission/majors?page=1&limit=200"
+      : null,
     swrOptions,
   );
 
@@ -39,24 +56,24 @@ export default function Home() {
   const majors = majorsResponse?.data ?? [];
 
   const handleAddIntake = async (newIntake: Omit<Intake, "id">) => {
-    await apiPost("/intakes", newIntake);
+    await apiPost("/admission/intakes", newIntake);
     await mutateIntakes();
   };
 
   const handleUpdateIntake = async (newIntake: Intake) => {
-    await apiPut(`/intakes/${newIntake.id}`, newIntake);
+    await apiPut(`/admission/intakes/${newIntake.id}`, newIntake);
     await mutateIntakes();
   };
 
   const handleDeleteIntake = async (intakeId: string) => {
-    await apiDelete(`/intakes/${intakeId}`);
+    await apiDelete(`/admission/intakes/${intakeId}`);
     await mutateIntakes();
   };
 
   if (isLoading) return <div className="bg-background" />;
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {currentRole === "admin" && (
+      {(currentRole === "Admissions" || currentRole === "Directorate") && (
         <IntakeManagement
           intakes={intakes}
           majors={majors}

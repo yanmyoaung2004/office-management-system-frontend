@@ -10,7 +10,7 @@ import { EnrollmentManagement } from "@/components/enrollment-management";
 import { apiDelete, apiPost, apiPut } from "@/lib/api-client";
 import { DropoutType } from "@/components/dropout-modal";
 import { CredentialType } from "@/components/reactivate-modal";
-import { useAuth } from "@/hooks/useUserRole";
+import { useAuth } from "@/context/AuthContext";
 
 interface PaginatedResponse<T> {
   success: boolean;
@@ -38,14 +38,14 @@ export default function Home() {
 
   const { data: studentsResponse, mutate: mutateStudents } = useSWR<
     PaginatedResponse<Student>
-  >("/students?page=1&limit=200", swrOptions);
+  >("/admission/students?page=1&limit=200", swrOptions);
   const { data: intakesResponse } = useSWR<PaginatedResponse<Intake>>(
-    currentRole !== "staff" ? "/intakes?page=1&limit=200" : null,
+    currentRole !== "staff" ? "/admission/intakes?page=1&limit=200" : null,
     swrOptions,
   );
 
   const { data: majorsResponse } = useSWR<PaginatedResponse<Major>>(
-    currentRole !== "staff" ? "/majors?page=1&limit=200" : null,
+    currentRole !== "staff" ? "/admission/majors?page=1&limit=200" : null,
     swrOptions,
   );
 
@@ -54,7 +54,7 @@ export default function Home() {
   const majors = majorsResponse?.data ?? [];
 
   const handleEnrollStudent = async (newStudent: Omit<Student, "id">) => {
-    await apiPost("/students", newStudent);
+    await apiPost("/admission/students", newStudent);
     await mutateStudents();
   };
 
@@ -80,18 +80,18 @@ export default function Home() {
       followUpDate: followUpDate,
     };
 
-    await apiPost("/dropouts", payload);
+    await apiPost("/admission/dropouts", payload);
     await mutateStudents();
     setSelectedStudent(null);
   };
 
   const handleUpdateStudent = async (newStudent: Student) => {
-    await apiPut(`/students/${newStudent.id}`, newStudent);
+    await apiPut(`/admission/students/${newStudent.id}`, newStudent);
     await mutateStudents();
   };
 
   const handleDeleteStudent = async (studentId: string) => {
-    await apiDelete(`/students/${studentId}`);
+    await apiDelete(`/admission/students/${studentId}`);
     await mutateStudents();
   };
 

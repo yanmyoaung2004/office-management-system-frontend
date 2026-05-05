@@ -2,22 +2,35 @@
 
 import { LoginForm } from "@/components/login-form";
 import { useRouter } from "next/navigation";
-import type { UserRole } from "@/types";
+import type { User } from "@/types";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
 
-  const handleLoginSuccess = (payload: {
-    id: string;
-    role: UserRole;
-    token: string;
-  }) => {
-    const { id, role, token } = payload;
-    const sessionData = { id, role };
-    localStorage.setItem("currentUser", JSON.stringify(sessionData));
-    localStorage.setItem("auth_token", token);
+  
 
-    router.push("/");
+  const handleLoginSuccess = (payload: { user: User; token: string }) => {
+    const { user, token } = payload;
+    login(user, token);
+
+    // Redirect based on department
+    if (user.department === "ADMISSIONS") {
+      router.push("/admission");
+    } else if (user.department === "ENGINEERING") {
+      router.push("/exam");
+    } else if (user.department === "HR") {
+      router.push("/hr");
+    } else if (user.department === "FINANCE") {
+      router.push("/finance");
+    } else if (user.department === "EXAM") {
+      router.push("/exam");
+    } else if (user.department === "OPERATION") {
+      router.push("/operation");
+    } else {
+      router.push("/admission");
+    }
   };
 
   return (

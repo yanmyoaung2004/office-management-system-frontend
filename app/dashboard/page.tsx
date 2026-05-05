@@ -5,7 +5,7 @@ import type { Student, Intake, UserRole, Major } from "@/types";
 
 // Components
 import { Dashboard } from "@/components/dashboard";
-import { useAuth } from "@/hooks/useUserRole";
+import { useAuth } from "@/context/AuthContext";
 
 interface PaginatedResponse<T> {
   success: boolean;

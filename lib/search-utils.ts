@@ -8,7 +8,10 @@ function fuzzyMatch(searchTerm: string, targetString: string): boolean {
   return searchTokens.every((token) => targetLower.includes(token));
 }
 
-export function searchStudents(students: Student[], query: string): Student[] {
+export function searchStudentsAdmission(
+  students: Student[],
+  query: string,
+): Student[] {
   if (!query.trim()) return students;
 
   return students.filter((student) => {
@@ -22,6 +25,24 @@ export function searchStudents(students: Student[], query: string): Student[] {
       fuzzyMatch(query, student.majorName ? student.majorName : "") ||
       fuzzyMatch(query, student.intakeCode ? student.intakeCode : "") ||
       fuzzyMatch(query, student.status)
+    );
+  });
+}
+
+export function searchStudentsFinance(
+  students: Student[],
+  query: string,
+): Student[] {
+  if (!query.trim()) return students;
+
+  return students.filter((student) => {
+    return (
+      fuzzyMatch(query, student.fullName) ||
+      fuzzyMatch(query, student.studentPhoneNo) ||
+      fuzzyMatch(query, student.parentPhoneNo) ||
+      fuzzyMatch(query, student.majorName ? student.majorName : "") ||
+      fuzzyMatch(query, student.intakeCode ? student.intakeCode : "") ||
+      fuzzyMatch(query, student.currentStatus ? student.currentStatus : "")
     );
   });
 }

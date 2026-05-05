@@ -160,7 +160,7 @@ export function InquiryManagement({
     }
   };
 
-  const canManage = currentRole === "admin" || currentRole === "staff";
+  const canManage = currentRole === "Admissions" || currentRole === "staff";
 
   return (
     <div className="space-y-4">

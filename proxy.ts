@@ -14,6 +14,18 @@ export function proxy(request: NextRequest) {
     "/majors",
     "/users",
     "/migration",
+    "/unauthorized",
+    "/admission",
+    "/admission/enrollment",
+    "/admission/inquiries",
+    "/admission/intakes",
+    "/admission/majors",
+    "/finance",
+    "/finance/students",
+    "/finance/intakes",
+
+    "/exam",
+    "/operation",
   ];
 
   // 2. Optimized Validation Logic

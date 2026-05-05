@@ -5,7 +5,7 @@ import type { Enquiry, FollowUpSession, UserRole } from "@/types";
 // Components
 import { InquiryManagement } from "@/components/inquiry-management";
 import { apiDelete, apiPost, apiPut } from "@/lib/api-client";
-import { useAuth } from "@/hooks/useUserRole";
+import { useAuth } from "@/context/AuthContext";
 
 interface PaginatedResponse<T> {
   success: boolean;
@@ -30,16 +30,16 @@ export default function Home() {
 
   const { data: enquiriesResponse, mutate: mutateEnquiries } = useSWR<
     PaginatedResponse<Enquiry>
-  >("/enquiries?page=1&limit=200", swrOptions);
+  >("/admission/enquiries?page=1&limit=200", swrOptions);
   const enquiries = enquiriesResponse?.data ?? [];
 
   const handleAddEnquiry = async (newEnquiry: Omit<Enquiry, "id">) => {
-    await apiPost("/enquiries", newEnquiry);
+    await apiPost("/admission/enquiries", newEnquiry);
     await mutateEnquiries();
   };
 
   const handleDeleteEnquiry = async (enquiryId: string) => {
-    await apiDelete(`/enquiries/${enquiryId}`);
+    await apiDelete(`/admission/enquiries/${enquiryId}`);
     await mutateEnquiries();
   };
 
@@ -47,7 +47,7 @@ export default function Home() {
     enquiryId: string,
     followUp: Omit<FollowUpSession, "id" | "enquiryId">,
   ) => {
-    await apiPost(`/enquiries/${enquiryId}/followups`, followUp);
+    await apiPost(`/admission/enquiries/${enquiryId}/followups`, followUp);
     await mutateEnquiries();
   };
 
@@ -55,12 +55,12 @@ export default function Home() {
     followupId: string,
     followUp: FollowUpSession,
   ) => {
-    await apiPut(`/followups/${followupId}`, followUp);
+    await apiPut(`/admission/followups/${followupId}`, followUp);
     await mutateEnquiries();
   };
 
   const handleDeleteFollowUp = async (id: string) => {
-    await apiDelete(`/followups/${id}`);
+    await apiDelete(`/admission/followups/${id}`);
     await mutateEnquiries();
   };
 

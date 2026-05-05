@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import { migrationData } from "@/asset/migration";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useUserRole";
 import { apiPost } from "@/lib/api-client";
 import { Student } from "@/types";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/AuthContext";
 
 // Utility: Define outside the component to prevent re-creation on every render
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

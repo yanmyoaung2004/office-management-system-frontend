@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,27 +10,34 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { UserRole } from "@/types";
+import type { User } from "@/types";
 import { apiPost } from "@/lib/api-client";
 
 interface LoginFormProps {
-  onLoginSuccess: (payload: {
-    id: string;
-    role: UserRole;
-    token: string;
-  }) => void;
+  onLoginSuccess: (payload: { user: User; token: string }) => void;
 }
 
 interface LoginResponse {
-  success: boolean;
-  data?: {
+  access: string;
+  refresh: string;
+  user: {
     id: string;
     username: string;
-    fullName: string;
     email: string;
-    role: UserRole;
-    token: string;
+    first_name: string;
+    last_name: string;
+    role: {
+      id: string;
+      name: string;
+    };
+    department: {
+      id: string;
+      name: string;
+    };
+    is_active: boolean;
+    date_joined: string;
   };
+  token_type: string;
   error?: string;
 }
 
@@ -46,20 +53,36 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await apiPost<LoginResponse>("/auth/login", {
-        username,
-        password,
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username,
+            password,
+          }),
+        },
+      );
 
-      if (response.success && response.data) {
-        onLoginSuccess({
-          id: response.data.id,
-          role: response.data.role,
-          token: response.data.token,
-        });
-      } else {
-        setError(response.error || "Invalid username or password");
-      }
+      const response: LoginResponse = await res.json();
+
+      const mappedUser: User = {
+        id: response.user.id,
+        username: response.user.username,
+        email: response.user.email,
+        fullName: `${response.user.first_name} ${response.user.last_name}`,
+        role: response.user.role.name,
+        department: response.user.department.name,
+        isSuperuser: response.user.role.name === "SuperAdmin",
+      };
+      // Pass exactly what handleLoginSuccess expects
+      onLoginSuccess({
+        user: mappedUser,
+        token: response.access,
+      });
     } catch (err) {
       console.log(err);
       setError("Unable to login. Please check your credentials and try again.");

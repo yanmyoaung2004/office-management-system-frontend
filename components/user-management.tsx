@@ -38,7 +38,7 @@ export function UserManagement({
     id: "",
     username: "",
     password: "",
-    role: "staff" as "admin" | "staff",
+    role: "staff" as "Admin" | "staff",
     fullName: "",
     email: "",
   });
@@ -101,7 +101,7 @@ export function UserManagement({
         Add User
       </Button>
 
-      {(showAddForm || showFormEdit) && currentRole === "admin" && (
+      {(showAddForm || showFormEdit) && currentRole === "Admin" && (
         <Card className="p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">Add New User</h3>
           <form
@@ -173,12 +173,12 @@ export function UserManagement({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    role: e.target.value as "admin" | "staff",
+                    role: e.target.value as "Admin" | "staff",
                   })
                 }
                 className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm"
               >
-                <option value="admin">Admin</option>
+                <option value="Admin">Admin</option>
                 <option value="staff">Staff</option>
               </select>
             </div>
@@ -227,7 +227,7 @@ export function UserManagement({
                   </th>
                   <th className="py-3 px-4 text-left font-semibold">Email</th>
                   <th className="py-3 px-4 text-left font-semibold">Role</th>
-                  {currentRole === "admin" && (
+                  {currentRole === "Admin" && (
                     <th className="py-3 px-4 text-left font-semibold">
                       Actions
                     </th>
@@ -247,15 +247,15 @@ export function UserManagement({
                       <td className="py-3 px-4">
                         <span
                           className={`px-2 py-1 rounded text-xs font-medium ${
-                            user.role === "admin"
+                            user.role === "Admin"
                               ? "bg-accent/10 text-accent"
                               : "bg-primary/10 text-primary"
                           }`}
                         >
-                          {user.role === "admin" ? "Administrator" : "Staff"}
+                          {user.role === "Admin" ? "Administrator" : "Staff"}
                         </span>
                       </td>
-                      {currentRole === "admin" && (
+                      {currentRole === "Admin" && (
                         <td className="py-3 px-4">
                           <Button
                             onClick={() => {
@@ -268,7 +268,7 @@ export function UserManagement({
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          {!user.is_superuser && (
+                          {!user.isSuperuser && (
                             <ConfirmationPopup
                               itemId={user.id as string}
                               onAllow={() => onDeleteUser(user.id as string)}
@@ -293,7 +293,7 @@ export function UserManagement({
                 ) : (
                   <tr>
                     <td
-                      colSpan={currentRole === "admin" ? 5 : 4}
+                      colSpan={currentRole === "Admin" ? 5 : 4}
                       className="py-6 text-center text-muted-foreground"
                     >
                       No users found

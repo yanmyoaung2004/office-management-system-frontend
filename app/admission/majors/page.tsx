@@ -3,7 +3,7 @@ import useSWR from "swr";
 import type { UserRole, Major } from "@/types";
 import { apiDelete, apiPost, apiPut } from "@/lib/api-client";
 import { MajorManagement } from "@/components/major-management";
-import { useAuth } from "@/hooks/useUserRole";
+import { useAuth } from "@/context/AuthContext";
 
 interface PaginatedResponse<T> {
   success: boolean;
@@ -28,22 +28,25 @@ export default function Home() {
   // --- Data State (from backend via SWR) ---
   const { data: majorsResponse, mutate: mutateMajors } = useSWR<
     PaginatedResponse<Major>
-  >(currentRole !== "staff" ? "/majors?page=1&limit=200" : null, swrOptions);
+  >(
+    currentRole !== "staff" ? "/admission/majors?page=1&limit=200" : null,
+    swrOptions,
+  );
 
   const majors = majorsResponse?.data ?? [];
 
   const handleAddMajor = async (newMajor: Omit<Major, "id">) => {
-    await apiPost(`/majors`, newMajor);
+    await apiPost(`/admission/majors`, newMajor);
     await mutateMajors();
   };
 
   const handleUpdateMajor = async (newMajor: Major) => {
-    await apiPut(`/majors/${newMajor.id}`, newMajor);
+    await apiPut(`/admission/majors/${newMajor.id}`, newMajor);
     await mutateMajors();
   };
 
   const handleDeleteMajor = async (majorId: string) => {
-    await apiDelete(`/majors/${majorId}`);
+    await apiDelete(`/admission/majors/${majorId}`);
     await mutateMajors();
   };
   if (isLoading) return <div className="bg-background" />;

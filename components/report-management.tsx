@@ -251,7 +251,7 @@ export function ReportManagement({
                     </div>
                   </div>
                 </div>
-                {currentRole === "admin" && (
+                {currentRole === "Admissions" && (
                   <Button
                     onClick={() => onDeleteReport(report.id)}
                     variant="ghost"

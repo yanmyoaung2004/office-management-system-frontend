@@ -7,46 +7,78 @@ import { useState } from "react";
 import Image from "next/image";
 import { Notification } from "./notification";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useUserRole";
+import { useAuth } from "@/context/AuthContext";
 
 export function Navigation() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const currentRole = user?.role as UserRole;
+  const currentDepartment = user?.department;
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const activeTab = usePathname();
   const router = useRouter();
-  const tabs = [
-    {
-      id: "/dashboard",
-      label: "Dashboard",
-      roles: ["admin", "staff", "readonly"] as UserRole[],
-    },
-    {
-      id: "/enrollment",
-      label: "Enrollment",
-      roles: ["admin", "staff"] as UserRole[],
-    },
-    { id: "/intakes", label: "Intakes", roles: ["admin"] as UserRole[] },
-    {
-      id: "/majors",
-      label: "Majors",
-      roles: ["admin"] as UserRole[],
-    },
-    {
-      id: "/inquiries",
-      label: "Inquiries",
-      roles: ["admin", "staff", "readonly"] as UserRole[],
-    },
-    { id: "/users", label: "Users", roles: ["admin"] as UserRole[] },
-  ];
 
-  const visibleTabs = tabs.filter((tab) => tab.roles.includes(currentRole));
+  const departmentTabs: Record<
+    string,
+    { id: string; label: string; roles: UserRole[] }[]
+  > = {
+    ADMISSIONS: [
+      {
+        id: "/dashboard",
+        label: "Dashboard",
+        roles: ["Admissions", "staff", "readonly"] as UserRole[],
+      },
+      {
+        id: "/admission/enrollment",
+        label: "Enrollment",
+        roles: ["Admissions", "staff"] as UserRole[],
+      },
+      {
+        id: "/admission/intakes",
+        label: "Intakes",
+        roles: ["Admissions"] as UserRole[],
+      },
+      {
+        id: "/admission/majors",
+        label: "Majors",
+        roles: ["Admissions"] as UserRole[],
+      },
+      {
+        id: "/admission/inquiries",
+        label: "Inquiries",
+        roles: ["Admissions", "staff", "readonly"] as UserRole[],
+      },
+      {
+        id: "/admission/users",
+        label: "Users",
+        roles: ["Admissions"] as UserRole[],
+      },
+    ],
+    FINANCE: [
+      {
+        id: "/finance/students",
+        label: "Students",
+        roles: ["Finance Staff"],
+      },
+      {
+        id: "/finance/intakes",
+        label: "Intakes",
+        roles: ["Finance Staff"],
+      },
+    ],
+  };
+
+  const rawDepartmentTabs = departmentTabs[currentDepartment || ""] || [];
+  const visibleTabs = rawDepartmentTabs.filter((tab) => {
+    if (currentRole === "Directorate") return true;
+    return tab.roles.includes(currentRole);
+  });
 
   const handleLogout = () => {
-    localStorage.removeItem("currentUser");
-    localStorage.removeItem("auth_token");
+    logout();
     router.push("/login");
   };
+
   if (activeTab === "/login") {
     return null;
   }

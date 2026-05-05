@@ -37,9 +37,11 @@ async function request<T>(
 
   // Attach auth token from localStorage when available (client-side only)
   if (typeof window !== "undefined") {
-    const token = window.localStorage.getItem("auth_token");
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
+    const auth = JSON.parse(
+      window.localStorage.getItem("auth_token") as string,
+    );
+    if (auth) {
+      headers.Authorization = `Bearer ${auth.token}`;
     }
   }
 

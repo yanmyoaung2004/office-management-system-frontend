@@ -1,10 +1,11 @@
+import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { SwrProvider } from "@/components/swr-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Navigation } from "@/components/navigation";
+import { Providers } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,13 +51,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Toaster position="top-center" />
-
-        <SwrProvider>
-          <div className="min-h-screen bg-background">
-            <Navigation />
-            {children}
-          </div>
-        </SwrProvider>
+        <Providers>
+          <SwrProvider>
+            <div className="min-h-screen bg-background">
+              <Navigation />
+              {children}
+            </div>
+          </SwrProvider>
+        </Providers>
         <Analytics />
       </body>
     </html>

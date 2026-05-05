@@ -5,7 +5,7 @@ import type { User, UserRole } from "@/types";
 // Components
 import { UserManagement } from "@/components/user-management";
 import { apiDelete, apiPost, apiPut } from "@/lib/api-client";
-import { useAuth } from "@/hooks/useUserRole";
+import { useAuth } from "@/context/AuthContext";
 
 interface PaginatedResponse<T> {
   success: boolean;
@@ -52,7 +52,7 @@ export default function Home() {
   if (isLoading) return <div className="bg-background" />;
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {currentRole === "admin" && (
+      {currentRole === "Admin" && (
         <UserManagement
           users={users}
           onUpdateUser={handleUpdateUser}

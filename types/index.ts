@@ -1,4 +1,41 @@
-export type UserRole = "admin" | "staff" | "readonly";
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+}
+
+export interface AuthContextType extends AuthState {
+  login: (user: User, token: string) => void;
+  logout: () => void;
+  isLoading: boolean;
+}
+
+export type UserRole =
+  | "Admissions"
+  | "Directorate"
+  | "Finance"
+  | "HR"
+  | "Finance Staff"
+  | "staff"
+  | "Student"
+  | "readonly";
+
+export const CAN_VIEW_INTAKES: UserRole[] = [
+  "Admissions",
+  "Directorate",
+  "Finance",
+  "Finance Staff",
+];
+
+export const CAN_VIEW_MAJORS: UserRole[] = ["Admissions", "Directorate"];
+
+export type Department =
+  | "HR"
+  | "ENGINEERING"
+  | "ADMISSIONS"
+  | "FINANCE"
+  | "EXAM"
+  | "OPERATION"
+  | "DIRECTORATE";
 export type AlertType =
   | "FOLLOW_UP"
   | "ENROLLMENT"
@@ -158,14 +195,25 @@ export interface Enquiry {
   remark?: string;
 }
 
+// export interface User {
+//   id?: string;
+//   is_superuser?: boolean;
+//   username: string;
+//   password?: string; // In real app, this would be hashed; not returned from backend
+//   role: "admin" | "staff";
+//   fullName: string;
+//   email: string;
+// }
+
 export interface User {
   id?: string;
-  is_superuser?: boolean;
   username: string;
-  password?: string; // In real app, this would be hashed; not returned from backend
-  role: "admin" | "staff";
-  fullName: string;
   email: string;
+  fullName: string;
+  role: string;
+  department?: string;
+  isSuperuser?: boolean;
+  password?: string; // In real app, this would be hashed; not returned from backend
 }
 
 export interface ReportEnquiryEntry {

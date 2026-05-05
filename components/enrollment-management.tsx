@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronDown, Download, Edit, Plus, Trash2, X } from "lucide-react";
-import { filterStudents, searchStudents } from "@/lib/search-utils";
+import { filterStudents, searchStudentsAdmission } from "@/lib/search-utils";
 import { Pagination } from "./pagination";
 import { ConfirmationPopup } from "./confirmation-popup";
 import { isValidEmailDomain } from "@/lib/dns-validator";
@@ -99,7 +99,7 @@ export function EnrollmentManagement({
     setTownships((nrcData[state] || []).map((twp) => twp.short));
   };
 
-  let filteredStudents = searchStudents(students, searchQuery);
+  let filteredStudents = searchStudentsAdmission(students, searchQuery);
   filteredStudents = filterStudents(filteredStudents, {
     major: filters.major || undefined,
     intake: filters.intake || undefined,
@@ -317,7 +317,7 @@ export function EnrollmentManagement({
 
   function splitNRC(nrcString: string) {
     const nrcRegex = /^(\d+)\/([A-Z]+)\(([N|P|E])\)(\d+)$/;
-    const match = nrcString.match(nrcRegex);
+    const match = nrcString.match(nrcRegex) || [];
     if (!match) {
       console.log("Invalid NRC format provided.");
     }
@@ -1101,7 +1101,8 @@ export function EnrollmentManagement({
                   <th className="text-left py-3 px-4 font-semibold">Program</th>
                   <th className="text-left py-3 px-4 font-semibold">Status</th>
                   <th className="text-left py-3 px-4 font-semibold">Scholar</th>
-                  {(currentRole === "admin" || currentRole === "staff") && (
+                  {(currentRole === "Admissions" ||
+                    currentRole === "staff") && (
                     <th className="text-left py-3 px-4 font-semibold">
                       Actions
                     </th>
@@ -1167,7 +1168,8 @@ export function EnrollmentManagement({
                         )}
                       </td>
 
-                      {(currentRole === "admin" || currentRole === "staff") && (
+                      {(currentRole === "Admissions" ||
+                        currentRole === "staff") && (
                         <td className="py-3 px-4">
                           <Button
                             onClick={() => {
