@@ -43,7 +43,7 @@ export default function FilterPanel({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await apiGet(`/filter-data`);
+        const res = await apiGet(`/admission/filter-data`);
         setData(res as FilterData);
         // console.log(res);
       } catch (error) {

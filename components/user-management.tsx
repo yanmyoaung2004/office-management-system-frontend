@@ -101,7 +101,7 @@ export function UserManagement({
         Add User
       </Button>
 
-      {(showAddForm || showFormEdit) && currentRole === "Admin" && (
+      {(showAddForm || showFormEdit) && currentRole === "Admissions" && (
         <Card className="p-6 mb-6">
           <h3 className="text-lg font-semibold mb-4">Add New User</h3>
           <form
@@ -227,7 +227,7 @@ export function UserManagement({
                   </th>
                   <th className="py-3 px-4 text-left font-semibold">Email</th>
                   <th className="py-3 px-4 text-left font-semibold">Role</th>
-                  {currentRole === "Admin" && (
+                  {currentRole === "Admissions" && (
                     <th className="py-3 px-4 text-left font-semibold">
                       Actions
                     </th>
@@ -252,10 +252,12 @@ export function UserManagement({
                               : "bg-primary/10 text-primary"
                           }`}
                         >
-                          {user.role === "Admin" ? "Administrator" : "Staff"}
+                          {user.role === "Admissions"
+                            ? "Administrator"
+                            : "Staff"}
                         </span>
                       </td>
-                      {currentRole === "Admin" && (
+                      {currentRole === "Admissions" && (
                         <td className="py-3 px-4">
                           <Button
                             onClick={() => {
@@ -293,7 +295,7 @@ export function UserManagement({
                 ) : (
                   <tr>
                     <td
-                      colSpan={currentRole === "Admin" ? 5 : 4}
+                      colSpan={currentRole === "Admissions" ? 5 : 4}
                       className="py-6 text-center text-muted-foreground"
                     >
                       No users found

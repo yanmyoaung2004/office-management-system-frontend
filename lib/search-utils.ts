@@ -1,4 +1,4 @@
-import type { Intake, Major, Student } from "@/types";
+import type { ExamSchedule, Intake, Major, Student } from "@/types";
 
 function fuzzyMatch(searchTerm: string, targetString: string): boolean {
   const searchLower = searchTerm.toLowerCase();
@@ -119,6 +119,21 @@ export function searchMajors(majors: Major[], query: string): Major[] {
       fuzzyMatch(query, major.code) ||
       fuzzyMatch(query, major.name) ||
       fuzzyMatch(query, major.description)
+    );
+  });
+}
+
+export function searchExam(
+  exams: ExamSchedule[],
+  query: string,
+): ExamSchedule[] {
+  if (!query.trim()) return exams;
+  return exams.filter((exam) => {
+    return (
+      fuzzyMatch(query, exam.title) ||
+      fuzzyMatch(query, exam.semester_name) ||
+      fuzzyMatch(query, exam.date_started) ||
+      fuzzyMatch(query, exam.intake)
     );
   });
 }

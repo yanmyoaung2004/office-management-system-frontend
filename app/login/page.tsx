@@ -9,21 +9,19 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  
-
   const handleLoginSuccess = (payload: { user: User; token: string }) => {
     const { user, token } = payload;
     login(user, token);
 
     // Redirect based on department
     if (user.department === "ADMISSIONS") {
-      router.push("/admission");
+      router.push("/admission/dashboard");
     } else if (user.department === "ENGINEERING") {
       router.push("/exam");
     } else if (user.department === "HR") {
       router.push("/hr");
     } else if (user.department === "FINANCE") {
-      router.push("/finance");
+      router.push("finance/intakes");
     } else if (user.department === "EXAM") {
       router.push("/exam");
     } else if (user.department === "OPERATION") {

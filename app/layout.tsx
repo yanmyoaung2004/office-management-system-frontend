@@ -1,7 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import { SwrProvider } from "@/components/swr-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Navigation } from "@/components/navigation";
@@ -59,7 +58,6 @@ export default function RootLayout({
             </div>
           </SwrProvider>
         </Providers>
-        <Analytics />
       </body>
     </html>
   );

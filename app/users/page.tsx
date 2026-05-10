@@ -52,7 +52,7 @@ export default function Home() {
   if (isLoading) return <div className="bg-background" />;
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {currentRole === "Admin" && (
+      {currentRole === "Admissions" && (
         <UserManagement
           users={users}
           onUpdateUser={handleUpdateUser}

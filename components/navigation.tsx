@@ -56,14 +56,21 @@ export function Navigation() {
     ],
     FINANCE: [
       {
-        id: "/finance/students",
-        label: "Students",
-        roles: ["Finance Staff"],
-      },
-      {
         id: "/finance/intakes",
         label: "Intakes",
         roles: ["Finance Staff"],
+      },
+    ],
+    EXAM: [
+      {
+        id: "/exam/intakes",
+        label: "Intakes",
+        roles: ["Exam Staff"],
+      },
+      {
+        id: "/exam/exams",
+        label: "Exams",
+        roles: ["Exam Staff"],
       },
     ],
   };

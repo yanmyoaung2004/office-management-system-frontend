@@ -1,8 +1,8 @@
 "use client";
 import useSWR from "swr";
-import type { UserRole, Student } from "@/types";
+import type { UserRole, Intake } from "@/types";
 import { useAuth } from "@/context/AuthContext";
-import { FinanceStudentManagement } from "@/components/finance/student-management";
+import { FinanceIntakeManagement } from "@/components/finance/intake-management";
 
 interface PaginatedResponse<T> {
   success: boolean;
@@ -24,28 +24,19 @@ const swrOptions = {
 export default function Page() {
   const { user, isLoading } = useAuth();
   const currentRole = user?.role as UserRole;
-  const { data: studentsResponse, mutate: mutateStudents } = useSWR<
-    PaginatedResponse<Student>
+  const { data: intakesResponse, mutate: mutateIntakes } = useSWR<
+    PaginatedResponse<Intake>
   >(
-    currentRole !== "staff" ? "/finance/students?page=1&limit=200" : null,
+    currentRole !== "staff" ? "/exam/intakes-semester?page=1&limit=200" : null,
     swrOptions,
   );
 
-  const students = studentsResponse?.data ?? [];
-
-  const handleUpdateMajor = async (studentId: string) => {
-    // await apiPut(`/majors/${newMajor.id}`, newMajor);
-    console.log(studentId);
-    // await mutateStudents();
-  };
+  const intakes = intakesResponse?.data ?? [];
 
   if (isLoading) return <div className="bg-background" />;
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <FinanceStudentManagement
-        students={students}
-        onUpdateStudent={handleUpdateMajor}
-      />
+      <FinanceIntakeManagement intakes={intakes} />
     </main>
   );
 }

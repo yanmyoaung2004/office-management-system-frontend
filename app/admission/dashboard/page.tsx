@@ -29,15 +29,15 @@ export default function Home() {
   const currentRole = user?.role as UserRole;
 
   const { data: studentsResponse } = useSWR<PaginatedResponse<Student>>(
-    "/students?page=1&limit=200",
+    "/admission/students?page=1&limit=200",
     swrOptions,
   );
   const { data: intakesResponse } = useSWR<PaginatedResponse<Intake>>(
-    currentRole !== "staff" ? "/intakes?page=1&limit=200" : null,
+    currentRole !== "staff" ? "/admission/intakes?page=1&limit=200" : null,
     swrOptions,
   );
   const { data: majorsResponse } = useSWR<PaginatedResponse<Major>>(
-    currentRole !== "staff" ? "/majors?page=1&limit=200" : null,
+    currentRole !== "staff" ? "/admission/majors?page=1&limit=200" : null,
     swrOptions,
   );
 

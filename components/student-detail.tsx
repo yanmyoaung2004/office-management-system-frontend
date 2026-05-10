@@ -400,7 +400,7 @@ export function StudentDetail({
               </div>
 
               {/* Admin Actions */}
-              {currentRole === "Admin" && (
+              {currentRole === "Admissions" && (
                 <div className="pt-6 space-y-3">
                   {student.status !== "Dropout" &&
                     student.status !== "Enrolled" && (

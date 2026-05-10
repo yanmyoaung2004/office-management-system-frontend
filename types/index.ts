@@ -15,6 +15,7 @@ export type UserRole =
   | "Finance"
   | "HR"
   | "Finance Staff"
+  | "Exam Staff"
   | "staff"
   | "Student"
   | "readonly";
@@ -60,8 +61,8 @@ export interface Major {
 }
 
 export interface Semester {
-  id: string | null;
-  semesterNumber: number;
+  id: string;
+  semesterNumber?: number;
   name: string;
 }
 export type Year =
@@ -80,12 +81,22 @@ export type Year =
       semesters: Semester[];
     };
 
+interface Subject {
+  id: string;
+  name: string;
+  code: string;
+}
 export interface IntakeSemester {
   id: string;
   semester_id: string;
+  semester_name?: string;
+  subjects: Subject[];
   start_date: string;
+  year?: string;
   end_date: string;
 }
+
+export type ExamType = "PRESENTATION" | "ONPAPER" | "ASSIGNMENT";
 
 export type ScheduleState = Record<string, IntakeSemester>;
 
@@ -98,6 +109,7 @@ export interface Intake {
   year: number;
   currentStatus: string;
   capacity: number;
+  createdAt?: string;
   startDate: string;
   endDate: string | null;
   semester_schedules?: IntakeSemester[];
@@ -265,4 +277,32 @@ export interface Notification {
   alertType: AlertType;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface Exam {
+  id: string;
+  title: string;
+  dateStarted: string;
+  intake: Intake;
+  semester: Semester;
+}
+
+export interface ExamPaper {
+  id?: string;
+  subject: string;
+  subject_name?: string;
+  duration: string; // ISO 8601 duration or HH:mm:ss format
+  type: ExamType;
+  total_marks: number;
+  exam_date: string; // ISO 8601 date-time string
+}
+
+export interface ExamSchedule {
+  id: string;
+  title: string;
+  intake: string;
+  semester: string;
+  semester_name: string;
+  date_started: string;
+  papers: ExamPaper[];
 }

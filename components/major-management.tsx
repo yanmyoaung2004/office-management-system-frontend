@@ -246,7 +246,10 @@ export function MajorManagement({
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-3">
         <div className="flex gap-2 flex-1">
-          <Button onClick={() => setShowForm(!showForm)} className="gap-2">
+          <Button
+            onClick={() => setShowForm((prev) => !prev)}
+            className="gap-2"
+          >
             <Plus className="h-4 w-4" />
             New Major
           </Button>

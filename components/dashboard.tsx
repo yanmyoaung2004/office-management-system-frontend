@@ -92,7 +92,9 @@ export function Dashboard({ students, majors }: DashboardProps) {
     }).toString();
 
     const fetchData = async () => {
-      const res = (await apiGet(`/chart-data?${query}`)) as ChartDataResponse;
+      const res = (await apiGet(
+        `/admission/chart-data?${query}`,
+      )) as ChartDataResponse;
       setChartData({
         majorData: res.majorData,
         locationData: res.locationData,

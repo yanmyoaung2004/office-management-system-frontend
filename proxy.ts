@@ -7,24 +7,26 @@ export function proxy(request: NextRequest) {
   // 1. Define routes. Use strings for static, Regex objects for dynamic.
   const staticRoutes = [
     "/login",
-    "/enrollment",
-    "/intakes",
-    "/dashboard",
-    "/inquiries",
-    "/majors",
     "/users",
     "/migration",
+
     "/unauthorized",
+
     "/admission",
+    "/admission/dashboard",
     "/admission/enrollment",
     "/admission/inquiries",
     "/admission/intakes",
     "/admission/majors",
+
     "/finance",
     "/finance/students",
     "/finance/intakes",
 
     "/exam",
+    "/exam/intakes",
+    "/exam/exams",
+
     "/operation",
   ];
 

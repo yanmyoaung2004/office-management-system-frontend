@@ -148,8 +148,11 @@ export function IntakeManagement({
 
   const handleViewIntakeDetails = useCallback(async (intakeId: string) => {
     setStudents(
-      (await apiGet(`/intakes/${intakeId}/enrollments`)) as DropoutStudent[],
+      (await apiGet(
+        `/admission/intakes/${intakeId}/enrollments`,
+      )) as DropoutStudent[],
     );
+
     setDetailMode(true);
     setSelectedIntakeId(intakeId);
   }, []);
