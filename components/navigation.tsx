@@ -20,38 +20,44 @@ export function Navigation() {
 
   const departmentTabs: Record<
     string,
-    { id: string; label: string; roles: UserRole[] }[]
+    { id: string; label: string; roles: UserRole[]; permissions: string[] }[]
   > = {
     ADMISSIONS: [
       {
         id: "/dashboard",
         label: "Dashboard",
         roles: ["Admissions", "staff", "readonly"] as UserRole[],
+        permissions: ["view_enrollment"],
       },
       {
         id: "/admission/enrollment",
         label: "Enrollment",
         roles: ["Admissions", "staff"] as UserRole[],
+        permissions: ["view_enrollment"],
       },
       {
         id: "/admission/intakes",
         label: "Intakes",
         roles: ["Admissions"] as UserRole[],
+        permissions: ["view_enrollment"],
       },
       {
         id: "/admission/majors",
         label: "Majors",
         roles: ["Admissions"] as UserRole[],
+        permissions: ["view_enrollment"],
       },
       {
         id: "/admission/inquiries",
         label: "Inquiries",
         roles: ["Admissions", "staff", "readonly"] as UserRole[],
+        permissions: ["view_enrollment"],
       },
       {
         id: "/admission/users",
         label: "Users",
         roles: ["Admissions"] as UserRole[],
+        permissions: ["view_enrollment"],
       },
     ],
     FINANCE: [
@@ -59,6 +65,7 @@ export function Navigation() {
         id: "/finance/intakes",
         label: "Intakes",
         roles: ["Finance Staff"],
+        permissions: ["view_enrollment"],
       },
     ],
     EXAM: [
@@ -66,21 +73,21 @@ export function Navigation() {
         id: "/exam/intakes",
         label: "Intakes",
         roles: ["Exam Staff"],
+        permissions: ["view_intake"],
       },
       {
         id: "/exam/exams",
         label: "Exams",
         roles: ["Exam Staff"],
+        permissions: ["view_exam"],
       },
     ],
   };
 
   const rawDepartmentTabs = departmentTabs[currentDepartment || ""] || [];
   const visibleTabs = rawDepartmentTabs.filter((tab) => {
-    if (currentRole === "Directorate") return true;
-    return tab.roles.includes(currentRole);
+    return user?.permissions?.some((p) => tab.permissions.includes(p));
   });
-
   const handleLogout = () => {
     logout();
     router.push("/login");

@@ -4,13 +4,18 @@ import { useState } from "react";
 import type { ExamSchedule, Intake } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Edit, Plus, Trash2, Eye } from "lucide-react";
 import { Pagination } from "@/components/pagination";
-import { Input } from "../../../components/ui/input";
 import { searchExam } from "@/lib/search-utils";
-import ExamForm from "../../../components/exam/exam-form";
+import { ExamDetailModal } from "@/components/exam/exam-detail-modal";
 import { useAuth } from "@/context/AuthContext";
 import useSWR from "swr";
+import { ConfirmationPopup } from "@/components/confirmation-popup";
+import { apiDelete } from "@/lib/api-client";
+import { toast } from "sonner";
+import { usePermission } from "@/hooks/usePermission";
+import ExamForm from "@/components/exam/exam-form";
+import { Input } from "@/components/ui/input";
 
 const ITEMS_PER_PAGE = 6;
 interface PaginatedResponse<T> {
@@ -32,11 +37,14 @@ const swrOptions = {
 
 export default function Page() {
   const { user, isLoading } = useAuth();
+  const { hasPermission } = usePermission();
   const currentRole = user?.role;
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [showForm, setShowForm] = useState<boolean>(false);
   const [showFormEdit, setShowFormEdit] = useState<boolean>(false);
+  const [showDetail, setShowDetail] = useState<boolean>(false);
+  const [selectedExam, setSelectedExam] = useState<ExamSchedule | null>(null);
 
   const { data: intakesResponse } = useSWR<PaginatedResponse<Intake>>(
     currentRole !== "staff" ? "/exam/intakes-semester?page=1&limit=200" : null,
@@ -61,8 +69,30 @@ export default function Page() {
   );
 
   const handleOnClose = () => {
-    setShowForm((prev) => !prev);
+    setShowForm(false);
+    setShowFormEdit(false);
+    setShowDetail(false);
+    setSelectedExam(null);
     mutateExams();
+  };
+
+  const onDeleteExam = async (id: string) => {
+    if (hasPermission("delete_exam")) {
+      const res: { success: boolean; message: string; error: string } =
+        await apiDelete(`/exam/exams/${id}`);
+      if (res.success) {
+        toast.success(res.message);
+        mutateExams();
+        return;
+      }
+      toast.error(res.error);
+    } else toast.error("You don't have permission.");
+  };
+
+  const onAddExamToggle = () => {
+    if (hasPermission("add_exam")) {
+      setShowForm(true);
+    } else toast.error("You don't have permission.");
   };
 
   if (isLoading) return <div className="bg-background" />;
@@ -72,10 +102,7 @@ export default function Page() {
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex gap-2 flex-1">
-            <Button
-              onClick={() => setShowForm((prev) => !prev)}
-              className="gap-2"
-            >
+            <Button onClick={onAddExamToggle} className="gap-2">
               <Plus className="h-4 w-4" />
               New Exam
             </Button>
@@ -89,8 +116,19 @@ export default function Page() {
         </div>
 
         {(showForm || showFormEdit) && (
-          <ExamForm intakes={intakes} onClose={handleOnClose} />
+          <ExamForm
+            intakes={intakes}
+            onClose={handleOnClose}
+            exam={selectedExam}
+            isUpdate={showFormEdit}
+          />
         )}
+
+        <ExamDetailModal
+          exam={selectedExam}
+          open={showDetail}
+          onOpenChange={setShowDetail}
+        />
 
         <Card>
           <CardHeader>
@@ -127,6 +165,49 @@ export default function Page() {
                         <td className="py-3 px-4">{exam.intake}</td>
                         <td className="py-3 px-4">{exam.semester_name}</td>
                         <td className="py-3 px-4">{exam.date_started}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-1">
+                            <Button
+                              onClick={() => {
+                                setSelectedExam(exam);
+                                setShowDetail(true);
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-blue-600 hover:bg-blue-50"
+                              title="View Details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setShowFormEdit(true);
+                                setSelectedExam(exam);
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-primary hover:bg-primary/80"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <ConfirmationPopup
+                              itemId={exam.id}
+                              onAllow={onDeleteExam}
+                              onCancel={() => {}}
+                              onButtonText=""
+                              onButtonVariant="ghost"
+                              onAllowButtonText="Allow"
+                              onCancelButtonText="Don't allow"
+                              primaryText="Allow to delete?"
+                              description="Do you want to allow this exam to be deleted permanently?"
+                              buttonIcon={Trash2}
+                              buttonClass={
+                                "text-destructive hover:bg-destructive/80"
+                              }
+                              iconClass="h-4 w-4"
+                            />
+                          </div>
+                        </td>
                       </tr>
                     ))
                   ) : (

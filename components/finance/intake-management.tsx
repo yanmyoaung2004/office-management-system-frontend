@@ -9,6 +9,7 @@ import { apiGet, apiPost } from "@/lib/api-client";
 import { ConfirmationPopup } from "../confirmation-popup";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { usePermission } from "@/hooks/usePermission";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -42,6 +43,7 @@ export function FinanceIntakeManagement({ intakes }: IntakeManagementProps) {
   const [selectedIntake, setSelectedIntake] = useState<Intake>();
   const [detailMode, setDetailMode] = useState<boolean>(false);
   const [students, setStudents] = useState<FinanceStudent[]>([]);
+  const { hasPermission } = usePermission();
 
   const filteredIntakes = searchIntakes(intakes, searchQuery);
 
@@ -61,6 +63,10 @@ export function FinanceIntakeManagement({ intakes }: IntakeManagementProps) {
 
   const handleViewIntakeDetails = useCallback(
     async (intakeId: string) => {
+      if (!hasPermission("view_enrollment")) {
+        toast.error("You don't have permission.");
+        return;
+      }
       const res: FinanceStudentResponse = await apiGet(
         `/finance/intakes/${intakeId}/enrollments`,
       );
@@ -74,7 +80,7 @@ export function FinanceIntakeManagement({ intakes }: IntakeManagementProps) {
       setStudents(res.data);
       setDetailMode(true);
     },
-    [intakes, setSelectedIntake, setStudents, setDetailMode],
+    [intakes, hasPermission, setSelectedIntake, setStudents, setDetailMode],
   );
 
   const lastClickRef = useRef<number>(0);

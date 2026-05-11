@@ -226,6 +226,7 @@ export interface User {
   department?: string;
   isSuperuser?: boolean;
   password?: string; // In real app, this would be hashed; not returned from backend
+  permissions?: string[];
 }
 
 export interface ReportEnquiryEntry {

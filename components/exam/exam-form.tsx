@@ -1,18 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Plus,
-  Trash2,
-  Calendar,
-  Clock,
-  Save,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  BookOpen,
-  Layout,
-} from "lucide-react";
+import { Plus, Trash2, Calendar, Clock, BookOpen, Layout } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,12 +14,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ExamPaper, ExamType, Intake, IntakeSemester } from "@/types";
-import { apiPost } from "@/lib/api-client";
+import {
+  ExamPaper,
+  ExamSchedule,
+  ExamType,
+  Intake,
+  IntakeSemester,
+} from "@/types";
+import { apiPost, apiPut } from "@/lib/api-client";
 import { toast } from "sonner";
+import { usePermission } from "@/hooks/usePermission";
 
 // ======================================================
 // TYPES
@@ -44,39 +39,44 @@ interface ExamFormData {
   papers: ExamPaper[];
 }
 
-interface Status {
-  type: "success" | "error" | null;
-  message: string;
-}
-
 interface ExamFormProps {
   intakes: Intake[];
   onClose: () => void;
+  exam: ExamSchedule | null | undefined;
+  isUpdate: boolean;
 }
 
 // ======================================================
 // COMPONENT
 // ======================================================
 
-export default function ExamForm({ intakes, onClose }: ExamFormProps) {
+export default function ExamForm({
+  intakes,
+  onClose,
+  exam,
+  isUpdate,
+}: ExamFormProps) {
   const [loading, setLoading] = useState(false);
+  const { hasPermission } = usePermission();
 
-  const [status, setStatus] = useState<Status>({
-    type: null,
-    message: "",
-  });
-
-  const [selectedIntake, setSelectedIntake] = useState<Intake | null>(null);
-
+  const [selectedIntake, setSelectedIntake] = useState<Intake | null>(
+    intakes.find((i) => i.id === exam?.intake) ?? null,
+  );
   const [selectedSemester, setSelectedSemester] =
-    useState<IntakeSemester | null>(null);
+    useState<IntakeSemester | null>(() => {
+      return (
+        selectedIntake?.semester_schedules?.find(
+          (s) => s.semester_id === exam?.semester,
+        ) ?? null
+      );
+    });
 
   const [formData, setFormData] = useState<ExamFormData>({
-    title: "Final Exam 2026",
-    intake_id: "",
-    semester_id: "",
-    date_started: "",
-    papers: [],
+    title: exam ? exam?.title : "Final Exam 2026",
+    intake_id: exam ? exam?.intake : "",
+    semester_id: exam ? exam?.semester : "",
+    date_started: exam ? exam?.date_started : "",
+    papers: exam ? exam?.papers : [],
   });
 
   // ======================================================
@@ -129,10 +129,7 @@ export default function ExamForm({ intakes, onClose }: ExamFormProps) {
     );
 
     if (exists) {
-      setStatus({
-        type: "error",
-        message: "Paper already exists for this subject.",
-      });
+      toast.error("Paper already exists for this subject.");
 
       return;
     }
@@ -172,11 +169,6 @@ export default function ExamForm({ intakes, onClose }: ExamFormProps) {
     try {
       setLoading(true);
 
-      setStatus({
-        type: null,
-        message: "",
-      });
-
       if (!formData.intake_id) {
         throw new Error("Please select intake.");
       }
@@ -184,45 +176,62 @@ export default function ExamForm({ intakes, onClose }: ExamFormProps) {
       if (!formData.semester_id) {
         throw new Error("Please select semester.");
       }
+      if (!formData.date_started) {
+        throw new Error("Please select exam date.");
+      }
 
       if (formData.papers.length === 0) {
         throw new Error("At least one paper is required.");
       }
+      if (!isUpdate) {
+        if (!hasPermission("add_exam")) {
+          toast.error("You don't have permission.");
+          return;
+        }
 
-      const payload = {
-        title: formData.title,
-        semester: formData.semester_id,
-        date_started: formData.date_started,
-        intake: formData.intake_id,
-        papers: formData.papers,
-      };
+        const payload = {
+          title: formData.title,
+          semester: formData.semester_id,
+          date_started: formData.date_started,
+          intake: formData.intake_id,
+          papers: formData.papers,
+        };
 
-      const res: { success: boolean; message: string; error: string } =
-        await apiPost(`/exam/exams/`, payload);
+        const res: { success: boolean; message: string; error: string } =
+          await apiPost(`/exam/exams/`, payload);
+        if (res.success) {
+          toast.success(res.message);
+          onClose();
+          return;
+        }
+        toast.error(res.error);
+      } else {
+        if (!hasPermission("change_exam")) {
+          toast.error("You don't have permission.");
+          return;
+        }
+        const payload = {
+          id: exam?.id,
+          title: formData.title,
+          semester: formData.semester_id,
+          date_started: formData.date_started,
+          intake: formData.intake_id,
+          papers: formData.papers,
+        };
 
-      if (res.success) {
-        toast.success(res.message);
-        onClose();
-        return;
+        const res: { success: boolean; message: string; error: string } =
+          await apiPut(`/exam/exams/${exam?.id}`, payload);
+        if (res.success) {
+          toast.success(res.message);
+          onClose();
+          return;
+        }
+        toast.error(res.error);
       }
-      toast.error(res.error);
-
-      // ======================================================
-      // YOUR API CALL
-      // ======================================================
-
-      // await api.post("/exam", formData)
-
-      setStatus({
-        type: "success",
-        message: "Exam created successfully.",
-      });
     } catch (error) {
-      setStatus({
-        type: "error",
-        message:
-          error instanceof Error ? error.message : "Something went wrong.",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong.",
+      );
     } finally {
       setLoading(false);
     }
@@ -245,20 +254,6 @@ export default function ExamForm({ intakes, onClose }: ExamFormProps) {
               <Layout className="h-5 w-5" />
               Exam Configuration
             </CardTitle>
-
-            <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Exam
-                </>
-              )}
-            </Button>
           </div>
         </CardHeader>
 
@@ -380,20 +375,6 @@ export default function ExamForm({ intakes, onClose }: ExamFormProps) {
           {/* STATUS */}
           {/* ====================================================== */}
 
-          {status.message && (
-            <Alert
-              variant={status.type === "error" ? "destructive" : "default"}
-            >
-              {status.type === "success" ? (
-                <CheckCircle2 className="h-4 w-4" />
-              ) : (
-                <AlertCircle className="h-4 w-4" />
-              )}
-
-              <AlertDescription>{status.message}</AlertDescription>
-            </Alert>
-          )}
-
           {/* ====================================================== */}
           {/* PAPERS HEADER */}
           {/* ====================================================== */}
@@ -422,10 +403,10 @@ export default function ExamForm({ intakes, onClose }: ExamFormProps) {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="absolute right-3 top-3"
+                  className="absolute right-3 top-3 hover:bg-red-500 "
                   onClick={() => removePaper(index)}
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <Trash2 className="h-4 w-4 hover:text-destructive" />
                 </Button>
 
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -480,7 +461,7 @@ export default function ExamForm({ intakes, onClose }: ExamFormProps) {
                         updatePaper(index, "type", value as ExamType)
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
 
@@ -526,7 +507,9 @@ export default function ExamForm({ intakes, onClose }: ExamFormProps) {
                     <Input
                       type="datetime-local"
                       className="pl-9"
-                      value={paper.exam_date}
+                      value={
+                        paper.exam_date ? paper.exam_date.slice(0, 16) : ""
+                      }
                       onChange={(e) =>
                         updatePaper(index, "exam_date", e.target.value)
                       }
@@ -542,6 +525,22 @@ export default function ExamForm({ intakes, onClose }: ExamFormProps) {
                 </div>
               </div>
             ))}
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={onClose} type="button" variant="outline">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {loading ? (
+                <>Saving...</>
+              ) : (
+                <>{isUpdate ? "Update Exam" : "Save Exam"}</>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>

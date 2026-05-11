@@ -25,6 +25,7 @@ interface LoginResponse {
     email: string;
     first_name: string;
     last_name: string;
+    permissions: string[];
     role: {
       id: string;
       name: string;
@@ -75,7 +76,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
         fullName: `${response.user.first_name} ${response.user.last_name}`,
         role: response.user.role.name,
         department: response.user.department.name,
-        isSuperuser: response.user.role.name === "SuperAdmin",
+        permissions: response.user.permissions,
       };
       // Pass exactly what handleLoginSuccess expects
       onLoginSuccess({

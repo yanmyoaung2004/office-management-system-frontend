@@ -20,6 +20,7 @@ interface ValidationResponse {
     email: string;
     first_name: string;
     last_name: string;
+    permissions: string[];
     role: {
       id: string;
       name: string;
@@ -50,11 +51,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!response.success || !response.isValid) {
           throw new Error(`Session validation failed: ${response.error}`);
         }
+
         const userData = response.user;
         const mappedUser: User = {
           id: userData.id,
           username: userData.username,
           email: userData.email,
+          permissions: userData.permissions,
           fullName: `${userData.first_name} ${userData.last_name}`,
           role: userData.role.name,
           department: userData.department.name,
