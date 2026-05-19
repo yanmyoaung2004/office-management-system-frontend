@@ -156,7 +156,7 @@ async function generateExamResultPDF(
   const leftCol = data.remarks.slice(0, midPoint);
   const rightCol = data.remarks.slice(midPoint);
 
-  const remarkY = doc.y + 10;
+  let remarkY = doc.y + 10;
   leftCol.forEach((item, i) => {
     doc.text(`${item.code}`, 50, remarkY + i * 15, { width: 60 });
     doc.font("Helvetica").text(`${item.name}`, 110, remarkY + i * 15);

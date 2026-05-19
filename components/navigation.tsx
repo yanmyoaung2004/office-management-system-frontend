@@ -104,9 +104,15 @@ export function Navigation() {
           <div className="flex items-center space-x-8">
             <Image
               alt="STI Myanmar College"
-              src={"/logo.png"}
+              src="/logo.png"
               width={100}
               height={50}
+              priority
+              style={{
+                width: "auto",
+                height: "auto",
+              }}
+              className="object-contain"
             />
             <div className="hidden md:flex space-x-0 lg:space-x-1">
               {visibleTabs.map((tab) => (

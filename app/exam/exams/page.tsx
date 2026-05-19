@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Edit, Plus, Trash2, Eye } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 import { searchExam } from "@/lib/search-utils";
-import { ExamDetailModal } from "@/components/exam/exam-detail-modal";
 import { useAuth } from "@/context/AuthContext";
 import useSWR from "swr";
 import { ConfirmationPopup } from "@/components/confirmation-popup";
@@ -16,6 +15,7 @@ import { toast } from "sonner";
 import { usePermission } from "@/hooks/usePermission";
 import ExamForm from "@/components/exam/exam-form";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 const ITEMS_PER_PAGE = 6;
 interface PaginatedResponse<T> {
@@ -39,11 +39,11 @@ export default function Page() {
   const { user, isLoading } = useAuth();
   const { hasPermission } = usePermission();
   const currentRole = user?.role;
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [showForm, setShowForm] = useState<boolean>(false);
   const [showFormEdit, setShowFormEdit] = useState<boolean>(false);
-  const [showDetail, setShowDetail] = useState<boolean>(false);
   const [selectedExam, setSelectedExam] = useState<ExamSchedule | null>(null);
 
   const { data: intakesResponse } = useSWR<PaginatedResponse<Intake>>(
@@ -71,7 +71,6 @@ export default function Page() {
   const handleOnClose = () => {
     setShowForm(false);
     setShowFormEdit(false);
-    setShowDetail(false);
     setSelectedExam(null);
     mutateExams();
   };
@@ -124,12 +123,6 @@ export default function Page() {
           />
         )}
 
-        <ExamDetailModal
-          exam={selectedExam}
-          open={showDetail}
-          onOpenChange={setShowDetail}
-        />
-
         <Card>
           <CardHeader>
             <CardTitle>All Exams ({exams.length})</CardTitle>
@@ -169,12 +162,11 @@ export default function Page() {
                           <div className="flex gap-1">
                             <Button
                               onClick={() => {
-                                setSelectedExam(exam);
-                                setShowDetail(true);
+                                router.push(`/exam/exams/${exam.id}`);
                               }}
                               variant="ghost"
                               size="sm"
-                              className="text-blue-600 hover:bg-blue-50"
+                              className="text-primary hover:bg-primary/80"
                               title="View Details"
                             >
                               <Eye className="h-4 w-4" />

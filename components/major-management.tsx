@@ -12,6 +12,7 @@ import { Textarea } from "./ui/textarea";
 import { ConfirmationPopup } from "./confirmation-popup";
 import { searchMajors } from "@/lib/search-utils";
 import { toast } from "sonner";
+import { handleExportCSV } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -222,24 +223,6 @@ export function MajorManagement({
 
     const fileName = `majors-${new Date().toISOString().split("T")[0]}.csv`;
     handleExportCSV(headers, rows, fileName);
-  };
-
-  const handleExportCSV = (
-    headers: string[],
-    rows: (string | number)[][],
-    fileName: string,
-  ) => {
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
   };
 
   return (

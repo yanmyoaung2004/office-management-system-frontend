@@ -60,7 +60,11 @@ async function request<T>(
     );
     error.status = response.status;
     error.code = data?.code;
-    toast.error(data.error);
+    toast.error(
+      typeof data.error === "object" && data.error !== null
+        ? JSON.stringify(data.error)
+        : data.error,
+    );
     throw error;
   }
 

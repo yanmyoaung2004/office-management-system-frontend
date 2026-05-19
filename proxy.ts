@@ -4,62 +4,54 @@ import type { NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Define routes. Use strings for static, Regex objects for dynamic.
   const staticRoutes = [
     "/login",
     "/users",
     "/migration",
-
     "/unauthorized",
-
     "/admission",
     "/admission/dashboard",
     "/admission/enrollment",
     "/admission/inquiries",
     "/admission/intakes",
     "/admission/majors",
-
     "/finance",
     "/finance/students",
     "/finance/intakes",
-
     "/exam",
     "/exam/intakes",
     "/exam/exams",
-
     "/operation",
+    "/dashboard",
   ];
 
-  // 2. Optimized Validation Logic
-  // Check static routes first (faster), then test the dynamic pattern
+  // 1. Exact Match Check
   const isStaticValid = staticRoutes.includes(pathname);
-  const isDynamicValid = pathname.startsWith("/intakes/");
 
-  const isValid = isStaticValid || isDynamicValid;
+  // 2. Dynamic Pattern Checks (Regex or startsWith)
+  // Logic for /exam/exams/[ID] and /exam/exams/[ID]/export
+  const isExamRoute = pathname.startsWith("/exam/exams/");
 
-  // 3. Handle Invalid Routes
-  // Note: 'isInternal' is removed because your matcher below already excludes them.
+  // Logic for /intakes/[ID]
+  const isIntakeRoute = pathname.startsWith("/intakes/");
+
+  const isValid = isStaticValid || isExamRoute || isIntakeRoute;
+
+  // 3. Redirection Logic
   if (!isValid) {
-    // Prevent infinite redirect loops if the user is already on /dashboard
-    if (pathname !== "/dashboard") {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();
 }
 
-// 4. Refined Matcher
-// This ensures the middleware doesn't even run for assets or internal Next.js files.
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - All files with extensions (e.g. .svg, .png, .jpg, .pdf)
+     * Match all paths except:
+     * - api routes (where your PDF/Word generation code should live)
+     * - _next internal files
+     * - static assets with extensions
      */
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
   ],

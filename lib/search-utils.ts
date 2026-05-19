@@ -137,3 +137,13 @@ export function searchExam(
     );
   });
 }
+
+export function searchStudentExam(
+  students: Student[],
+  query: string,
+): Student[] {
+  if (!query.trim()) return students;
+  return students.filter((s) => {
+    return fuzzyMatch(query, s.fullName) || fuzzyMatch(query, s.status);
+  });
+}

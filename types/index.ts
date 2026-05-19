@@ -137,10 +137,11 @@ export interface FilterState {
 
 export interface Student {
   id: string; // No
+  student_id?: string;
   street?: string;
   city?: string;
   region?: string;
-  studentId?: string;
+  studentSchoolId?: string;
   fullName: string; // Name
   educationLevel: string; // Edu lvl
   gender: Gender | string; // Gender
@@ -296,6 +297,12 @@ export interface ExamPaper {
   type: ExamType;
   total_marks: number;
   exam_date: string; // ISO 8601 date-time string
+  uploaded_file?: {
+    fileName: string;
+    fileSize: number;
+    uploadDate: string;
+    fileUrl: string;
+  };
 }
 
 export interface ExamSchedule {
