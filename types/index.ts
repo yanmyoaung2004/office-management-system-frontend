@@ -137,7 +137,6 @@ export interface FilterState {
 
 export interface Student {
   id: string; // No
-  student_id?: string;
   street?: string;
   city?: string;
   region?: string;

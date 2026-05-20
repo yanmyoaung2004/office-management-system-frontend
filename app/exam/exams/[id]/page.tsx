@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import type { ExamSchedule, ExamPaper, Student } from "@/types";
+import type { ExamSchedule, ExamPaper } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -31,6 +31,22 @@ interface PaginatedResponse<T> {
 
 const ITEMS_PER_PAGE = 6;
 
+export interface StudentExam {
+  id: string;
+  student_id?: string;
+  studentSchoolId: string;
+  fullName: string;
+  status: string;
+  examResults: ExamResult[];
+}
+
+interface ExamResult {
+  examPaper: ExamPaper;
+  marksObtained: number;
+  status: string;
+  remarks: string;
+}
+
 export default function ExamDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -44,11 +60,11 @@ export default function ExamDetailPage() {
   const {
     data: response,
     isLoading,
-    mutate,
+    mutate: mutateData,
   } = useSWR<
     PaginatedResponse<{
       exam: ExamSchedule;
-      eligible_students: Student[];
+      eligible_students: StudentExam[];
     }>
   >(examId ? `/exam/exams/${examId}` : null, { revalidateOnFocus: false });
 
@@ -61,8 +77,6 @@ export default function ExamDetailPage() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
-
-  console.log(filteredStudents);
 
   const handleFileSelect = async (file: File, paperId: string) => {
     if (file.type !== "application/pdf") {
@@ -95,7 +109,7 @@ export default function ExamDetailPage() {
 
       if (data.success) {
         toast.success("File uploaded successfully");
-        mutate();
+        mutateData();
       } else {
         toast.error(data.message || "Upload failed");
       }
@@ -121,6 +135,10 @@ export default function ExamDetailPage() {
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+  };
+
+  const onSuccessStudentResultAdd = () => {
+    mutateData();
   };
 
   if (isLoading) {
@@ -182,7 +200,15 @@ export default function ExamDetailPage() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500 space-y-5">
+      <ExamResultCollectModal
+        onSuccessStudentResultAdd={onSuccessStudentResultAdd}
+        open={showDetail}
+        onOpenChange={setShowDetail}
+        onExportCSV={handleMajorsExportCSV}
+        papers={exam.papers}
+        students={students}
+      />
       <Card>
         <CardContent>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -365,27 +391,20 @@ export default function ExamDetailPage() {
         </CardContent>
       </Card>
 
-      <ExamResultCollectModal
-        onManualImport={() => console.log("manual Import")}
-        open={showDetail}
-        onOpenChange={setShowDetail}
-        onExportCSV={handleMajorsExportCSV}
-        papers={exam.papers}
-        students={students}
-      />
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Students ({students.length})</span>
-            <Button
-              className="mb-6 bg-primary cursor-pointer"
-              onClick={() => {
-                setShowDetail(true);
-              }}
-            >
-              Add Result
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                className="mb-6 bg-primary cursor-pointer"
+                onClick={() => {
+                  setShowDetail(true);
+                }}
+              >
+                Add Result
+              </Button>
+            </div>
           </CardTitle>
 
           <Input
@@ -406,7 +425,15 @@ export default function ExamDetailPage() {
                   <th className="py-3 px-4 text-left font-semibold">
                     Student Name
                   </th>
-                  <th className="py-3 px-4 text-left font-semibold">Status</th>
+
+                  {exam.papers.map((p) => (
+                    <th
+                      key={p.id}
+                      className="py-3 px-4 text-left font-semibold"
+                    >
+                      {p.subject_name}
+                    </th>
+                  ))}
                 </tr>
               </thead>
 
@@ -418,31 +445,38 @@ export default function ExamDetailPage() {
                       className="border-b border-border hover:bg-muted/50"
                     >
                       <td className="py-3 px-4">
-                        {s.studentSchoolId || "STI-306"}{" "}
+                        {s.studentSchoolId || "Not Set"}
                       </td>
                       <td className="py-3 px-4">{s.fullName}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            s.status === "Enrolled"
-                              ? "bg-accent/20 text-accent"
-                              : s.status === "Graduated"
-                                ? "bg-emerald-600/20 text-emerald-600"
-                                : s.status === "Dropout"
-                                  ? "bg-destructive/20 text-destructive"
-                                  : s.status === "Interrupted"
-                                    ? "bg-yellow-400/20 text-yellow-600"
-                                    : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {s.status}
-                        </span>
-                      </td>
+
+                      {exam.papers.map((paper) => {
+                        const matchingResult = s.examResults.find(
+                          (r) => r.examPaper.id === paper.id,
+                        );
+
+                        return (
+                          <td key={paper.id} className="py-3 px-4 font-medium">
+                            {matchingResult ? (
+                              <span>
+                                {matchingResult.marksObtained} (
+                                {matchingResult.status})
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 italic text-xs">
+                                No Record
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td className="py-6 text-center text-muted-foreground">
+                    <td
+                      colSpan={exam.papers.length + 2}
+                      className="py-6 text-center text-muted-foreground"
+                    >
                       No Student found
                     </td>
                   </tr>

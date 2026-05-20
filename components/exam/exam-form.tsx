@@ -219,6 +219,7 @@ export default function ExamForm({
           papers: formData.papers,
         };
 
+        console.log(payload);
         const res: { success: boolean; message: string; error: string } =
           await apiPut(`/exam/exams/${exam?.id}`, payload);
         if (res.success) {

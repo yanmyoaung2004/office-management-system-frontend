@@ -23,6 +23,7 @@ export function proxy(request: NextRequest) {
     "/exam/exams",
     "/operation",
     "/dashboard",
+    "/share",
   ];
 
   // 1. Exact Match Check
@@ -35,7 +36,10 @@ export function proxy(request: NextRequest) {
   // Logic for /intakes/[ID]
   const isIntakeRoute = pathname.startsWith("/intakes/");
 
-  const isValid = isStaticValid || isExamRoute || isIntakeRoute;
+  // Logic for /share/[token]
+  const isShareRoute = pathname.startsWith("/share/");
+
+  const isValid = isStaticValid || isExamRoute || isIntakeRoute || isShareRoute;
 
   // 3. Redirection Logic
   if (!isValid) {

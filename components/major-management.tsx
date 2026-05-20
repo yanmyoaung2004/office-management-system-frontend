@@ -6,13 +6,14 @@ import type { Major, Semester, Year } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, Edit, Plus, Trash2 } from "lucide-react";
+import { BookOpen, Download, Edit, Plus, Trash2 } from "lucide-react";
 import { Pagination } from "@/components/pagination";
 import { Textarea } from "./ui/textarea";
 import { ConfirmationPopup } from "./confirmation-popup";
 import { searchMajors } from "@/lib/search-utils";
 import { toast } from "sonner";
 import { handleExportCSV } from "@/lib/utils";
+import { SubjectManagement } from "./subject-management";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -34,6 +35,8 @@ export function MajorManagement({
   const [showFormEdit, setShowFormEdit] = useState<boolean>(false);
   const [years, setYears] = useState<Year[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [subjectManagementMajor, setSubjectManagementMajor] =
+    useState<Major | null>(null);
   const [formData, setFormData] = useState({
     id: "",
     name: "",
@@ -368,21 +371,6 @@ export function MajorManagement({
                     <Plus className="h-3 w-3" />
                     Add Year
                   </button>
-                  {/* <select
-                    // onChange={(e) => {
-                    // setFormData({ ...formData, majorId: e.target.value });
-                    // handleSelectMajor(e.target.value);
-                    // }}
-                    className="py-2 border border-border rounded-md bg-card text-foreground text-sm"
-                    required
-                  >
-                    <option value="">Select Saved Year</option>
-                    {majors.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select> */}
                 </div>
               </div>
             </div>
@@ -447,6 +435,14 @@ export function MajorManagement({
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        <Button
+                          onClick={() => setSubjectManagementMajor(major)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-amber-500 hover:bg-amber-600"
+                        >
+                          <BookOpen className="h-4 w-4" />
+                        </Button>
                         <ConfirmationPopup
                           itemId={major.id}
                           onAllow={onDeleteMajor}
@@ -490,6 +486,15 @@ export function MajorManagement({
           )}
         </CardContent>
       </Card>
+      {subjectManagementMajor && (
+        <SubjectManagement
+          major={subjectManagementMajor}
+          open={!!subjectManagementMajor}
+          onOpenChange={(v) => {
+            if (!v) setSubjectManagementMajor(null);
+          }}
+        />
+      )}
     </div>
   );
 }

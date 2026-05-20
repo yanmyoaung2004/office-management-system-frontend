@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,25 +16,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
 import { Download, Share, Upload, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
-import { ExamPaper, Student } from "@/types";
+import { ExamPaper } from "@/types";
 import { apiPost } from "@/lib/api-client";
 import { toast } from "sonner";
+import { StudentExam } from "@/app/exam/exams/[id]/page";
 
 interface ExamDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onExportCSV: () => void;
-  onManualImport: () => void;
+  onSuccessStudentResultAdd: () => void;
   papers: ExamPaper[];
-  students: Student[];
+  students: StudentExam[];
 }
 
 type CollectionMethod = "manual" | "excel" | "link";
 
-// Define the shape of the extracted JSON matching your specification
 interface ExtractedExamResult {
   student: string;
   marks_obtained: number;
@@ -46,7 +47,7 @@ export function ExamResultCollectModal({
   open,
   onOpenChange,
   onExportCSV,
-  onManualImport,
+  onSuccessStudentResultAdd,
   papers,
   students,
 }: ExamDetailModalProps) {
@@ -54,12 +55,39 @@ export function ExamResultCollectModal({
   const [examPaperId, setExamPaperId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Track both the physical file details and the extracted JSON payload
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parsedJsonPayload, setParsedJsonPayload] = useState<
     ExtractedExamResult[] | null
   >(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isCreatingLink, setIsCreatingLink] = useState(false);
+  const [createdLink, setCreatedLink] = useState<string | null>(null);
+
+  const selectedPaper = useMemo(
+    () => papers.find((p) => p.id === examPaperId),
+    [papers, examPaperId],
+  );
+
+  const [manualMarks, setManualMarks] = useState<Record<string, string>>({});
+  const [manualRemarks, setManualRemarks] = useState<Record<string, string>>(
+    {},
+  );
+
+  useEffect(() => {
+    if (open && method === "manual" && examPaperId) {
+      const marks: Record<string, string> = {};
+      const remarks: Record<string, string> = {};
+      for (const s of students) {
+        const existing = s.examResults.find(
+          (r) => r.examPaper.id === examPaperId,
+        );
+        marks[s.id] = existing ? String(existing.marksObtained) : "";
+        remarks[s.id] = existing ? existing.remarks : "";
+      }
+      setManualMarks(marks);
+      setManualRemarks(remarks);
+    }
+  }, [open, method, examPaperId, students]);
 
   const handleMajorsExportCSV = () => {
     onExportCSV();
@@ -114,7 +142,7 @@ export function ExamResultCollectModal({
             return {
               student: studentId,
               marks_obtained: marks,
-              status: "PUBLISHED", // Hardcoded fallback default string value as requested
+              status: "PENDING",
               remarks: remarkValue,
             };
           })
@@ -138,30 +166,24 @@ export function ExamResultCollectModal({
     reader.readAsBinaryString(file);
   };
 
-  const handleUploadSubmit = async () => {
-    if (
-      !parsedJsonPayload ||
-      parsedJsonPayload.length === 0 ||
-      !examPaperId ||
-      examPaperId === ""
-    )
-      return;
+  const submitResults = async (results: ExtractedExamResult[]) => {
+    if (!examPaperId || examPaperId === "" || results.length === 0) return;
 
     setIsSubmitting(true);
 
-    const data = parsedJsonPayload.map((data) => {
-      const matchingStudent = students.find(
-        (s) => s.studentSchoolId === data.student,
-      );
-      return {
-        ...data,
-        student: matchingStudent ? matchingStudent.student_id : data.student,
-      };
-    });
+    // const data = results.map((r) => {
+    //   const matchingStudent = students.find(
+    //     (s) => s.studentSchoolId === r.student,
+    //   );
+    //   return {
+    //     ...r,
+    //     student: matchingStudent ? matchingStudent.student_id : r.student,
+    //   };
+    // });
 
     const payload = {
       exam_paper: examPaperId,
-      results: data,
+      results: results,
     };
 
     try {
@@ -175,11 +197,11 @@ export function ExamResultCollectModal({
       }
 
       toast.success(message);
-      // Cleanup states and close dialog window on success
       setSelectedFile(null);
       setParsedJsonPayload(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onOpenChange(false);
+      onSuccessStudentResultAdd();
     } catch (err: any) {
       console.log(err);
     } finally {
@@ -187,9 +209,77 @@ export function ExamResultCollectModal({
     }
   };
 
+  const handleUploadSubmit = async () => {
+    if (
+      !parsedJsonPayload ||
+      parsedJsonPayload.length === 0 ||
+      !examPaperId ||
+      examPaperId === ""
+    )
+      return;
+    await submitResults(parsedJsonPayload);
+  };
+
+  const handleManualSubmit = async () => {
+    if (!examPaperId || examPaperId === "") return;
+
+    const results: ExtractedExamResult[] = students
+      .filter((s) => {
+        const marks = manualMarks[s.id];
+        return marks !== undefined && marks !== "";
+      })
+      .map((s) => ({
+        student: s.studentSchoolId,
+        marks_obtained: Number(manualMarks[s.id]),
+        status: "PENDING",
+        remarks: manualRemarks[s.id] || "",
+      }));
+
+    if (results.length === 0) {
+      toast.error("Enter marks for at least one student.");
+      return;
+    }
+
+    await submitResults(results);
+  };
+
+  const createLink = async () => {
+    if (!examPaperId || examPaperId === "") return;
+    setIsCreatingLink(true);
+    try {
+      const res: { success: boolean; data: { code: string } } = await apiPost(
+        `/exam/share-links/`,
+        { exam_paper: examPaperId },
+      );
+      if (res.success) {
+        const fullUrl = `${window.location.origin}/share/${res.data.code}`;
+        setCreatedLink(fullUrl);
+        toast.success("Share link created!");
+      }
+    } catch {
+      toast.error("Failed to create share link.");
+    } finally {
+      setIsCreatingLink(false);
+    }
+  };
+
+  const copyLink = async () => {
+    if (!createdLink) return;
+    try {
+      await navigator.clipboard.writeText(createdLink);
+      toast.success("Link copied to clipboard!");
+    } catch {
+      toast.error("Failed to copy link.");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex flex-col p-6 overflow-hidden max-w-md bg-white">
+      <DialogContent
+        className={`flex flex-col p-6 overflow-hidden bg-white ${
+          method === "manual" && examPaperId ? "sm:max-w-2xl" : "sm:max-w-md"
+        }`}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
             Collect Exam Results
@@ -207,7 +297,10 @@ export function ExamResultCollectModal({
             </Label>
             <Select
               value={examPaperId}
-              onValueChange={(value) => setExamPaperId(value)}
+              onValueChange={(value) => {
+                setExamPaperId(value);
+                setCreatedLink(null);
+              }}
             >
               <SelectTrigger id="paper-select" className="w-full">
                 <SelectValue placeholder="Select Exam Paper" />
@@ -243,19 +336,103 @@ export function ExamResultCollectModal({
           {/* Conditional Rendering Workspace Area */}
           <div className="rounded-md border border-dashed p-6 text-center bg-muted/30 min-h-40 flex flex-col justify-center">
             {method === "manual" && (
-              <div className="space-y-3">
-                <p className="font-semibold text-sm">Manual Entry Mode</p>
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                  Directly input student IDs, names, and distinctions into the
-                  system.
-                </p>
-                <Button
-                  onClick={onManualImport}
-                  className="gap-2 cursor-pointer mx-auto"
-                >
-                  <Download className="h-4 w-4" />
-                  Import Now
-                </Button>
+              <div className="space-y-4 text-left">
+                <div className="text-center">
+                  <p className="font-semibold text-sm">Manual Entry Mode</p>
+                  <p className="text-xs text-muted-foreground">
+                    Enter marks and remarks for each student.
+                  </p>
+                </div>
+
+                {!examPaperId ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Select an exam paper above to begin.
+                  </p>
+                ) : (
+                  <>
+                    <div className="max-h-64 overflow-y-auto border rounded-md">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50 sticky top-0">
+                          <tr className="border-b">
+                            <th className="py-2 px-3 text-left font-medium w-10">
+                              #
+                            </th>
+                            <th className="py-2 px-3 text-left font-medium">
+                              Student ID
+                            </th>
+                            <th className="py-2 px-3 text-left font-medium">
+                              Name
+                            </th>
+                            <th className="py-2 px-3 text-left font-medium">
+                              Marks / {selectedPaper?.total_marks || "?"}
+                            </th>
+                            <th className="py-2 px-3 text-left font-medium">
+                              Remarks
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {students.map((s, idx) => (
+                            <tr
+                              key={s.id}
+                              className="border-b hover:bg-muted/30"
+                            >
+                              <td className="py-1.5 px-3 text-muted-foreground text-xs">
+                                {idx + 1}
+                              </td>
+                              <td className="py-1.5 px-3 font-mono text-xs">
+                                {s.studentSchoolId}
+                              </td>
+                              <td className="py-1.5 px-3 text-xs">
+                                {s.fullName}
+                              </td>
+                              <td className="py-1.5 px-3">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={selectedPaper?.total_marks || 999}
+                                  className="h-8 text-xs w-full"
+                                  placeholder="-"
+                                  value={manualMarks[s.id] ?? ""}
+                                  onChange={(e) =>
+                                    setManualMarks((prev) => ({
+                                      ...prev,
+                                      [s.id]: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </td>
+                              <td className="py-1.5 px-3">
+                                <Input
+                                  className="h-8 text-xs w-full"
+                                  placeholder="Optional"
+                                  value={manualRemarks[s.id] ?? ""}
+                                  onChange={(e) =>
+                                    setManualRemarks((prev) => ({
+                                      ...prev,
+                                      [s.id]: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <Button
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={handleManualSubmit}
+                      className="w-full text-xs h-9 bg-primary/90 hover:bg-primary text-white disabled:opacity-50"
+                    >
+                      {isSubmitting
+                        ? "Submitting..."
+                        : `Submit Results (${students.filter((s) => manualMarks[s.id] !== "").length} students)`}
+                    </Button>
+                  </>
+                )}
               </div>
             )}
 
@@ -327,18 +504,54 @@ export function ExamResultCollectModal({
             )}
 
             {method === "link" && (
-              <div className="space-y-3">
-                <p className="font-semibold text-sm">Shareable Link Mode</p>
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                  Generate a secure link for faculty members to submit results.
-                </p>
-                <Button
-                  onClick={handleMajorsExportCSV}
-                  className="gap-2 cursor-pointer mx-auto"
-                >
-                  <Share className="h-4 w-4" />
-                  Create Link
-                </Button>
+              <div className="space-y-4 text-left">
+                <div className="text-center">
+                  <p className="font-semibold text-sm">Shareable Link Mode</p>
+                  <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                    Generate a secure link for faculty members to submit
+                    results.
+                  </p>
+                </div>
+
+                {!examPaperId ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Select an exam paper above to begin.
+                  </p>
+                ) : createdLink ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded border border-slate-200">
+                      <input
+                        type="text"
+                        readOnly
+                        value={createdLink}
+                        className="flex-1 text-xs bg-transparent border-none outline-none truncate text-slate-700"
+                      />
+                      <Button
+                        type="button"
+                        onClick={copyLink}
+                        size="sm"
+                        className="shrink-0 gap-1 h-8 text-xs cursor-pointer"
+                      >
+                        <Share className="h-3 w-3" />
+                        Copy
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Share this link with the faculty member to collect
+                      results.
+                    </p>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    disabled={isCreatingLink}
+                    onClick={createLink}
+                    className="gap-2 cursor-pointer mx-auto"
+                  >
+                    <Share className="h-4 w-4" />
+                    {isCreatingLink ? "Creating..." : "Create Link"}
+                  </Button>
+                )}
               </div>
             )}
           </div>

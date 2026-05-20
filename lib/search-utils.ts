@@ -1,3 +1,4 @@
+import { StudentExam } from "@/app/exam/exams/[id]/page";
 import type { ExamSchedule, Intake, Major, Student } from "@/types";
 
 function fuzzyMatch(searchTerm: string, targetString: string): boolean {
@@ -139,9 +140,9 @@ export function searchExam(
 }
 
 export function searchStudentExam(
-  students: Student[],
+  students: StudentExam[],
   query: string,
-): Student[] {
+): StudentExam[] {
   if (!query.trim()) return students;
   return students.filter((s) => {
     return fuzzyMatch(query, s.fullName) || fuzzyMatch(query, s.status);
