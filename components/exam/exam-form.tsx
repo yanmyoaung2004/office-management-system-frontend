@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ExamPaper,
+  ExamPaperComponent,
   ExamSchedule,
   ExamType,
   Intake,
@@ -57,6 +58,7 @@ export default function ExamForm({
   isUpdate,
 }: ExamFormProps) {
   const [loading, setLoading] = useState(false);
+
   const { hasPermission } = usePermission();
 
   const [selectedIntake, setSelectedIntake] = useState<Intake | null>(
@@ -101,22 +103,24 @@ export default function ExamForm({
     }));
   };
 
-  const updatePaper = <K extends keyof ExamPaper>(
-    index: number,
-    field: K,
-    value: ExamPaper[K],
+  const updateComponent = (
+    paperIndex: number,
+    compIndex: number,
+    field: keyof ExamPaperComponent,
+    value: string | number,
   ) => {
     const updated = [...formData.papers];
-
-    updated[index] = {
-      ...updated[index],
-      [field]: value,
+    const comp = { ...updated[paperIndex].components[compIndex] };
+    (comp as any)[field] = value;
+    updated[paperIndex] = {
+      ...updated[paperIndex],
+      components: [
+        ...updated[paperIndex].components.slice(0, compIndex),
+        comp,
+        ...updated[paperIndex].components.slice(compIndex + 1),
+      ],
     };
-
-    setFormData((prev) => ({
-      ...prev,
-      papers: updated,
-    }));
+    setFormData((prev) => ({ ...prev, papers: updated }));
   };
 
   const addPaper = (subjectId: string) => {
@@ -136,16 +140,54 @@ export default function ExamForm({
 
     const newPaper: ExamPaper = {
       subject: subject.id,
-      total_marks: 100,
-      exam_date: `${formData.date_started}T09:00`,
-      type: "ONPAPER",
-      duration: "03:00:00",
+      components: [
+        {
+          type: "ONPAPER",
+          marks_allocated: 100,
+          duration: "03:00:00",
+          exam_date: `${formData.date_started}T09:00`,
+        },
+      ],
     };
 
     setFormData((prev) => ({
       ...prev,
       papers: [...prev.papers, newPaper],
     }));
+  };
+
+  const addComponent = (paperIndex: number) => {
+    const paper = formData.papers[paperIndex];
+    const usedTypes = new Set(paper.components.map((c) => c.type));
+    const availableTypes: ExamType[] = ["ONPAPER", "PRESENTATION", "ASSIGNMENT"];
+    const nextType = availableTypes.find((t) => !usedTypes.has(t));
+    if (!nextType) {
+      toast.error("All component types already added for this paper.");
+      return;
+    }
+    const updated = [...formData.papers];
+    updated[paperIndex] = {
+      ...updated[paperIndex],
+      components: [
+        ...updated[paperIndex].components,
+        {
+          type: nextType,
+          marks_allocated: 100,
+          duration: "03:00:00",
+          exam_date: `${formData.date_started}T09:00`,
+        },
+      ],
+    };
+    setFormData((prev) => ({ ...prev, papers: updated }));
+  };
+
+  const removeComponent = (paperIndex: number, compIndex: number) => {
+    const updated = [...formData.papers];
+    const comps = updated[paperIndex].components.filter(
+      (_, i) => i !== compIndex,
+    );
+    updated[paperIndex] = { ...updated[paperIndex], components: comps };
+    setFormData((prev) => ({ ...prev, papers: updated }));
   };
 
   const removePaper = (index: number) => {
@@ -159,6 +201,18 @@ export default function ExamForm({
 
   const getSubjectName = (id: string) => {
     return subjects.find((s) => s.id === id)?.name || id;
+  };
+
+  const typeLabel = (t: ExamType) => {
+    switch (t) {
+      case "ONPAPER": return "On Paper";
+      case "PRESENTATION": return "Presentation";
+      case "ASSIGNMENT": return "Assignment";
+    }
+  };
+
+  const getUsedTypes = (paperIndex: number): ExamType[] => {
+    return formData.papers[paperIndex].components.map((c) => c.type);
   };
 
   // ======================================================
@@ -219,7 +273,6 @@ export default function ExamForm({
           papers: formData.papers,
         };
 
-        console.log(payload);
         const res: { success: boolean; message: string; error: string } =
           await apiPut(`/exam/exams/${exam?.id}`, payload);
         if (res.success) {
@@ -395,137 +448,192 @@ export default function ExamForm({
           {/* ====================================================== */}
 
           <div className="space-y-6">
-            {formData.papers.map((paper, index) => (
-              <div
-                key={index}
-                className="relative space-y-6 rounded-xl border bg-muted/20 p-5"
-              >
-                {/* REMOVE */}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="absolute right-3 top-3 hover:bg-red-500 "
-                  onClick={() => removePaper(index)}
+            {formData.papers.map((paper, paperIndex) => {
+              const totalAllocated = paper.components.reduce(
+                (sum, c) => sum + (Number(c.marks_allocated) || 0),
+                0,
+              );
+              const usedTypes = getUsedTypes(paperIndex);
+              const availableTypes = (["ONPAPER", "PRESENTATION", "ASSIGNMENT"] as ExamType[]).filter(
+                (t) => !usedTypes.includes(t),
+              );
+
+              return (
+                <div
+                  key={paperIndex}
+                  className="relative space-y-4 rounded-xl border bg-muted/20 p-5"
                 >
-                  <Trash2 className="h-4 w-4 hover:text-destructive" />
-                </Button>
+                  {/* REMOVE PAPER */}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="absolute right-3 top-3 hover:bg-red-500 "
+                    onClick={() => removePaper(paperIndex)}
+                  >
+                    <Trash2 className="h-4 w-4 hover:text-destructive" />
+                  </Button>
 
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                  {/* SUBJECT */}
-                  <div className="space-y-2">
-                    <Label>Subject</Label>
+                  {/* SUBJECT HEADER */}
+                  <div className="flex items-center gap-3 pr-10">
+                    <Badge variant="outline" className="text-sm px-3 py-1">
+                      {getSubjectName(paper.subject)}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      Total: {totalAllocated} / 100 marks
+                    </span>
+                    {totalAllocated > 100 && (
+                      <span className="text-xs text-destructive font-semibold">
+                        Exceeds 100!
+                      </span>
+                    )}
+                  </div>
 
-                    <Select
-                      value={paper.subject}
-                      onValueChange={(value) =>
-                        updatePaper(index, "subject", value)
-                      }
+                  <Separator />
+
+                  {/* COMPONENTS */}
+                  {paper.components.map((comp, compIndex) => (
+                    <div
+                      key={compIndex}
+                      className="space-y-4 rounded-lg border bg-white p-4"
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                          Component {compIndex + 1}
+                        </Label>
+                        {paper.components.length > 1 && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 hover:bg-red-500"
+                            onClick={() =>
+                              removeComponent(paperIndex, compIndex)
+                            }
+                          >
+                            <Trash2 className="h-3 w-3 hover:text-destructive" />
+                          </Button>
+                        )}
+                      </div>
 
-                      <SelectContent>
-                        {subjects.map((subject) => (
-                          <SelectItem key={subject.id} value={subject.id}>
-                            {subject.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {/* TYPE */}
+                        <div className="space-y-2">
+                          <Label>Type</Label>
+                          <Select
+                            value={comp.type}
+                            onValueChange={(value) =>
+                              updateComponent(
+                                paperIndex,
+                                compIndex,
+                                "type",
+                                value as ExamType,
+                              )
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(["ONPAPER", "PRESENTATION", "ASSIGNMENT"] as ExamType[]).map(
+                                (t) => (
+                                  <SelectItem
+                                    key={t}
+                                    value={t}
+                                    disabled={
+                                      t !== comp.type &&
+                                      usedTypes.includes(t)
+                                    }
+                                  >
+                                    {typeLabel(t)}
+                                  </SelectItem>
+                                ),
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                  {/* MARKS */}
-                  <div className="space-y-2">
-                    <Label>Total Marks</Label>
+                        {/* MARKS */}
+                        <div className="space-y-2">
+                          <Label>Marks Allocated</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={comp.marks_allocated}
+                            onChange={(e) =>
+                              updateComponent(
+                                paperIndex,
+                                compIndex,
+                                "marks_allocated",
+                                Number(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
 
-                    <Input
-                      type="number"
-                      value={paper.total_marks}
-                      onChange={(e) =>
-                        updatePaper(
-                          index,
-                          "total_marks",
-                          Number(e.target.value),
-                        )
-                      }
-                    />
-                  </div>
+                        {/* DURATION */}
+                        <div className="space-y-2">
+                          <Label>Duration</Label>
+                          <div className="relative">
+                            <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              className="pl-9"
+                              value={comp.duration}
+                              onChange={(e) =>
+                                updateComponent(
+                                  paperIndex,
+                                  compIndex,
+                                  "duration",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
 
-                  {/* TYPE */}
-                  <div className="space-y-2">
-                    <Label>Format</Label>
-
-                    <Select
-                      value={paper.type}
-                      onValueChange={(value) =>
-                        updatePaper(index, "type", value as ExamType)
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-
-                      <SelectContent>
-                        <SelectItem value="ONPAPER">On Paper</SelectItem>
-
-                        <SelectItem value="PRESENTATION">
-                          Presentation
-                        </SelectItem>
-
-                        <SelectItem value="VIVA">Viva</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* DURATION */}
-                  <div className="space-y-2">
-                    <Label>Duration</Label>
-
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-
-                      <Input
-                        className="pl-9"
-                        value={paper.duration}
-                        onChange={(e) =>
-                          updatePaper(index, "duration", e.target.value)
-                        }
-                      />
+                        {/* EXAM DATE */}
+                        <div className="space-y-2">
+                          <Label>Exam Date</Label>
+                          <div className="relative">
+                            <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              type="datetime-local"
+                              className="pl-9"
+                              value={
+                                comp.exam_date
+                                  ? comp.exam_date.slice(0, 16)
+                                  : ""
+                              }
+                              onChange={(e) =>
+                                updateComponent(
+                                  paperIndex,
+                                  compIndex,
+                                  "exam_date",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
+
+                  {/* ADD COMPONENT */}
+                  {availableTypes.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => addComponent(paperIndex)}
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add {typeLabel(availableTypes[0])} Component
+                    </Button>
+                  )}
                 </div>
-
-                <Separator />
-
-                {/* DATE */}
-                <div className="space-y-2">
-                  <Label>Exam Date</Label>
-
-                  <div className="relative max-w-sm">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-
-                    <Input
-                      type="datetime-local"
-                      className="pl-9"
-                      value={
-                        paper.exam_date ? paper.exam_date.slice(0, 16) : ""
-                      }
-                      onChange={(e) =>
-                        updatePaper(index, "exam_date", e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* FOOTER */}
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline">
-                    {getSubjectName(paper.subject)}
-                  </Badge>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="flex gap-2">
             <Button onClick={onClose} type="button" variant="outline">

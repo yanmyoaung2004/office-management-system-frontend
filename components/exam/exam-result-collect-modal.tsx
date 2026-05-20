@@ -20,10 +20,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
 import { Download, Share, Upload, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
-import { ExamPaper } from "@/types";
+import { ExamPaper, ExamPaperComponent } from "@/types";
 import { apiPost } from "@/lib/api-client";
 import { toast } from "sonner";
 import { StudentExam } from "@/app/exam/exams/[id]/page";
+
+interface ComponentWithSubject extends ExamPaperComponent {
+  subject_name?: string;
+}
 
 interface ExamDetailModalProps {
   open: boolean;
@@ -31,6 +35,7 @@ interface ExamDetailModalProps {
   onExportCSV: () => void;
   onSuccessStudentResultAdd: () => void;
   papers: ExamPaper[];
+  components: ComponentWithSubject[];
   students: StudentExam[];
 }
 
@@ -49,10 +54,11 @@ export function ExamResultCollectModal({
   onExportCSV,
   onSuccessStudentResultAdd,
   papers,
+  components,
   students,
 }: ExamDetailModalProps) {
   const [method, setMethod] = useState<CollectionMethod>("manual");
-  const [examPaperId, setExamPaperId] = useState<string>("");
+  const [selectedComponentId, setSelectedComponentId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -63,9 +69,9 @@ export function ExamResultCollectModal({
   const [isCreatingLink, setIsCreatingLink] = useState(false);
   const [createdLink, setCreatedLink] = useState<string | null>(null);
 
-  const selectedPaper = useMemo(
-    () => papers.find((p) => p.id === examPaperId),
-    [papers, examPaperId],
+  const selectedComponent = useMemo(
+    () => components.find((c) => c.id === selectedComponentId),
+    [components, selectedComponentId],
   );
 
   const [manualMarks, setManualMarks] = useState<Record<string, string>>({});
@@ -74,12 +80,12 @@ export function ExamResultCollectModal({
   );
 
   useEffect(() => {
-    if (open && method === "manual" && examPaperId) {
+    if (open && method === "manual" && selectedComponentId) {
       const marks: Record<string, string> = {};
       const remarks: Record<string, string> = {};
       for (const s of students) {
         const existing = s.examResults.find(
-          (r) => r.examPaper.id === examPaperId,
+          (r) => r.component.id === selectedComponentId,
         );
         marks[s.id] = existing ? String(existing.marksObtained) : "";
         remarks[s.id] = existing ? existing.remarks : "";
@@ -87,7 +93,7 @@ export function ExamResultCollectModal({
       setManualMarks(marks);
       setManualRemarks(remarks);
     }
-  }, [open, method, examPaperId, students]);
+  }, [open, method, selectedComponentId, students]);
 
   const handleMajorsExportCSV = () => {
     onExportCSV();
@@ -167,22 +173,12 @@ export function ExamResultCollectModal({
   };
 
   const submitResults = async (results: ExtractedExamResult[]) => {
-    if (!examPaperId || examPaperId === "" || results.length === 0) return;
+    if (!selectedComponentId || results.length === 0) return;
 
     setIsSubmitting(true);
 
-    // const data = results.map((r) => {
-    //   const matchingStudent = students.find(
-    //     (s) => s.studentSchoolId === r.student,
-    //   );
-    //   return {
-    //     ...r,
-    //     student: matchingStudent ? matchingStudent.student_id : r.student,
-    //   };
-    // });
-
     const payload = {
-      exam_paper: examPaperId,
+      component: selectedComponentId,
       results: results,
     };
 
@@ -213,15 +209,14 @@ export function ExamResultCollectModal({
     if (
       !parsedJsonPayload ||
       parsedJsonPayload.length === 0 ||
-      !examPaperId ||
-      examPaperId === ""
+      !selectedComponentId
     )
       return;
     await submitResults(parsedJsonPayload);
   };
 
   const handleManualSubmit = async () => {
-    if (!examPaperId || examPaperId === "") return;
+    if (!selectedComponentId) return;
 
     const results: ExtractedExamResult[] = students
       .filter((s) => {
@@ -244,12 +239,12 @@ export function ExamResultCollectModal({
   };
 
   const createLink = async () => {
-    if (!examPaperId || examPaperId === "") return;
+    if (!selectedComponentId) return;
     setIsCreatingLink(true);
     try {
       const res: { success: boolean; data: { code: string } } = await apiPost(
         `/exam/share-links/`,
-        { exam_paper: examPaperId },
+        { component: selectedComponentId },
       );
       if (res.success) {
         const fullUrl = `${window.location.origin}/share/${res.data.code}`;
@@ -277,7 +272,7 @@ export function ExamResultCollectModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={`flex flex-col p-6 overflow-hidden bg-white ${
-          method === "manual" && examPaperId ? "sm:max-w-2xl" : "sm:max-w-md"
+          method === "manual" && selectedComponentId !== null ? "sm:max-w-2xl" : "sm:max-w-md"
         }`}
       >
         <DialogHeader>
@@ -292,23 +287,26 @@ export function ExamResultCollectModal({
 
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label htmlFor="paper-select" className="text-sm font-medium">
-              Exam Paper
+            <Label htmlFor="component-select" className="text-sm font-medium">
+              Exam Component
             </Label>
             <Select
-              value={examPaperId}
+              value={selectedComponentId ? String(selectedComponentId) : ""}
               onValueChange={(value) => {
-                setExamPaperId(value);
+                setSelectedComponentId(value ? Number(value) : null);
                 setCreatedLink(null);
               }}
             >
-              <SelectTrigger id="paper-select" className="w-full">
-                <SelectValue placeholder="Select Exam Paper" />
+              <SelectTrigger id="component-select" className="w-full">
+                <SelectValue placeholder="Select Exam Component" />
               </SelectTrigger>
               <SelectContent>
-                {papers.map((p) => (
-                  <SelectItem key={p.id} value={p?.id || ""}>
-                    {p.subject_name}
+                {components.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.subject_name || "Unknown"}{" "}
+                    <span className="text-muted-foreground">
+                      ({c.type?.toLowerCase()})
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -344,9 +342,9 @@ export function ExamResultCollectModal({
                   </p>
                 </div>
 
-                {!examPaperId ? (
+                {!selectedComponentId ? (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    Select an exam paper above to begin.
+                    Select an exam component above to begin.
                   </p>
                 ) : (
                   <>
@@ -364,7 +362,7 @@ export function ExamResultCollectModal({
                               Name
                             </th>
                             <th className="py-2 px-3 text-left font-medium">
-                              Marks / {selectedPaper?.total_marks || "?"}
+                              Marks / {selectedComponent?.marks_allocated || "?"}
                             </th>
                             <th className="py-2 px-3 text-left font-medium">
                               Remarks
@@ -390,7 +388,7 @@ export function ExamResultCollectModal({
                                 <Input
                                   type="number"
                                   min={0}
-                                  max={selectedPaper?.total_marks || 999}
+                                  max={selectedComponent?.marks_allocated || 999}
                                   className="h-8 text-xs w-full"
                                   placeholder="-"
                                   value={manualMarks[s.id] ?? ""}
@@ -513,9 +511,9 @@ export function ExamResultCollectModal({
                   </p>
                 </div>
 
-                {!examPaperId ? (
+                {!selectedComponentId ? (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    Select an exam paper above to begin.
+                    Select an exam component above to begin.
                   </p>
                 ) : createdLink ? (
                   <div className="space-y-3">

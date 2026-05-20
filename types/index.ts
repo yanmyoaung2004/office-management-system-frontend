@@ -288,20 +288,20 @@ export interface Exam {
   semester: Semester;
 }
 
+export interface ExamPaperComponent {
+  id?: number;
+  type: ExamType;
+  exam_date: string;
+  duration: string;
+  marks_allocated: number;
+  question_file?: string | null;
+}
+
 export interface ExamPaper {
-  id?: string;
+  id?: number;
   subject: string;
   subject_name?: string;
-  duration: string; // ISO 8601 duration or HH:mm:ss format
-  type: ExamType;
-  total_marks: number;
-  exam_date: string; // ISO 8601 date-time string
-  uploaded_file?: {
-    fileName: string;
-    fileSize: number;
-    uploadDate: string;
-    fileUrl: string;
-  };
+  components: ExamPaperComponent[];
 }
 
 export interface ExamSchedule {

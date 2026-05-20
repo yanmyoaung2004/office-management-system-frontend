@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import type { ExamSchedule, ExamPaper } from "@/types";
+import type { ExamSchedule, ExamPaper, ExamPaperComponent } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -41,7 +41,14 @@ export interface StudentExam {
 }
 
 interface ExamResult {
-  examPaper: ExamPaper;
+  component: {
+    id: number;
+    type: string;
+    subject_name: string;
+    duration: string;
+    marks_allocated: number;
+    exam_date: string;
+  };
   marksObtained: number;
   status: string;
   remarks: string;
@@ -52,8 +59,8 @@ export default function ExamDetailPage() {
   const params = useParams();
   const examId = params.id as string;
 
-  const [uploadingPaperId, setUploadingPaperId] = useState<string | null>(null);
-  const [draggedPaperId, setDraggedPaperId] = useState<string | null>(null);
+  const [uploadingCompId, setUploadingCompId] = useState<number | null>(null);
+  const [draggedCompId, setDraggedCompId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [showDetail, setShowDetail] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,7 +85,7 @@ export default function ExamDetailPage() {
     currentPage * ITEMS_PER_PAGE,
   );
 
-  const handleFileSelect = async (file: File, paperId: string) => {
+  const handleFileSelect = async (file: File, compId: number) => {
     if (file.type !== "application/pdf") {
       toast.error("Only PDF files are allowed");
       return;
@@ -89,21 +96,22 @@ export default function ExamDetailPage() {
       return;
     }
 
-    await uploadFile(file, paperId);
+    await uploadFile(file, compId);
   };
 
-  const uploadFile = async (file: File, paperId: string) => {
+  const uploadFile = async (file: File, compId: number) => {
     try {
-      setUploadingPaperId(paperId);
+      setUploadingCompId(compId);
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("paperId", paperId);
-      formData.append("examId", examId);
 
-      const response = await fetch("/api/exam/upload-paper", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `/api/exam/exam-components/${compId}/upload-questions/`,
+        {
+          method: "PATCH",
+          body: formData,
+        },
+      );
 
       const data = await response.json();
 
@@ -117,18 +125,18 @@ export default function ExamDetailPage() {
       console.error("[v0] Upload error:", error);
       toast.error("Failed to upload file");
     } finally {
-      setUploadingPaperId(null);
+      setUploadingCompId(null);
     }
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, paperId: string) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, compId: number) => {
     e.preventDefault();
     e.stopPropagation();
-    setDraggedPaperId(null);
+    setDraggedCompId(null);
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      handleFileSelect(files[0], paperId);
+      handleFileSelect(files[0], compId);
     }
   };
 
@@ -207,6 +215,9 @@ export default function ExamDetailPage() {
         onOpenChange={setShowDetail}
         onExportCSV={handleMajorsExportCSV}
         papers={exam.papers}
+        components={exam.papers.flatMap((p) =>
+          (p.components || []).map((c) => ({ ...c, subject_name: p.subject_name }))
+        )}
         students={students}
       />
       <Card>
@@ -281,107 +292,113 @@ export default function ExamDetailPage() {
                             {paper.subject_name}
                           </CardTitle>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-                            <span>{paper.total_marks} Marks</span>
+                            <span>
+                              {paper.components?.reduce(
+                                (s, c) => s + (Number(c.marks_allocated) || 0),
+                                0,
+                              )}{" "}
+                              Total Marks
+                            </span>
                             <span className="text-slate-300">•</span>
-                            <span>{paper.duration} Mins</span>
+                            <span>
+                              {paper.components?.length || 0} Component
+                              {(paper.components?.length || 0) !== 1 && "s"}
+                            </span>
                           </div>
                         </div>
-                        <Badge className="bg-slate-100 text-slate-600 border-none hover:bg-slate-200 capitalize">
-                          {paper.type.toLowerCase()}
-                        </Badge>
                       </div>
                     </CardHeader>
 
-                    <CardContent className="p-6">
-                      {paper.uploaded_file ? (
-                        /* SUCCESS STATE */
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-4 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white shadow-md">
-                              <FileCheck className="h-6 w-6" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-bold text-emerald-900">
-                                {paper.uploaded_file.fileName}
-                              </p>
-                              <p className="text-xs text-emerald-700/70 font-medium">
-                                {(paper.uploaded_file.fileSize / 1024).toFixed(
-                                  2,
-                                )}{" "}
-                                KB • Uploaded{" "}
-                                {new Date(
-                                  paper.uploaded_file.uploadDate,
-                                ).toLocaleDateString()}
-                              </p>
+                    <CardContent className="p-6 space-y-4">
+                      {(paper.components || []).map((comp) => (
+                        <div
+                          key={comp.id}
+                          className="rounded-lg border bg-slate-50/50 p-4 space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="secondary"
+                                className="capitalize"
+                              >
+                                {comp.type?.toLowerCase()}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {comp.marks_allocated} marks • {comp.duration}
+                              </span>
                             </div>
                           </div>
 
-                          <div className="flex gap-3">
-                            <Button
-                              variant="outline"
-                              className="flex-1 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
-                              onClick={() =>
-                                window.open(
-                                  paper.uploaded_file?.fileUrl,
-                                  "_blank",
-                                )
+                          {comp.question_file ? (
+                            <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-100">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+                                <span className="text-xs font-medium text-emerald-900 truncate">
+                                  {comp.question_file}
+                                </span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs shrink-0"
+                                onClick={() =>
+                                  window.open(
+                                    `${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/exam/exam-components/${comp.id}/download-questions/`,
+                                    "_blank",
+                                  )
+                                }
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Download
+                              </Button>
+                            </div>
+                          ) : (
+                            <div
+                              onDrop={(e) =>
+                                handleDrop(e, comp.id as number)
                               }
-                            >
-                              <Download className="mr-2 h-4 w-4" /> Download
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-slate-400 hover:text-destructive hover:bg-destructive/5"
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* UPLOAD STATE */
-                        <div
-                          onDrop={(e) => handleDrop(e, paper.id || "")}
-                          onDragOver={handleDragOver}
-                          onDragEnter={() =>
-                            setDraggedPaperId(paper.id || null)
-                          }
-                          onDragLeave={() => setDraggedPaperId(null)}
-                          className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 transition-all cursor-pointer
+                              onDragOver={handleDragOver}
+                              onDragEnter={() =>
+                                setDraggedCompId(comp.id as number)
+                              }
+                              onDragLeave={() => setDraggedCompId(null)}
+                              className={`relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-all cursor-pointer
                                   ${
-                                    draggedPaperId === paper.id
+                                    draggedCompId === comp.id
                                       ? "border-primary bg-primary/5 ring-4 ring-primary/10"
                                       : "border-slate-200 hover:border-primary/40 hover:bg-slate-50"
                                   }`}
-                        >
-                          <input
-                            type="file"
-                            accept=".pdf"
-                            className="absolute inset-0 cursor-pointer opacity-0 z-10"
-                            onChange={(e) => {
-                              if (e.target.files?.[0]) {
-                                handleFileSelect(
-                                  e.target.files[0],
-                                  paper.id || "",
-                                );
-                              }
-                            }}
-                          />
-                          <div className="flex flex-col items-center text-center">
-                            <div className="mb-4 rounded-full bg-slate-100 p-4 text-slate-400 transition-colors group-hover:bg-primary/10 group-hover:text-primary">
-                              <Upload className="h-7 w-7" />
+                            >
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                className="absolute inset-0 cursor-pointer opacity-0 z-10"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    handleFileSelect(
+                                      e.target.files[0],
+                                      comp.id as number,
+                                    );
+                                  }
+                                }}
+                              />
+                              <div className="flex flex-col items-center text-center">
+                                <div className="mb-2 rounded-full bg-slate-100 p-2 text-slate-400 transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                                  <Upload className="h-5 w-5" />
+                                </div>
+                                <p className="text-xs font-semibold text-slate-700">
+                                  {uploadingCompId === comp.id
+                                    ? "Uploading..."
+                                    : "Upload Question Paper"}
+                                </p>
+                                <p className="mt-1 text-[10px] text-slate-400 font-medium">
+                                  PDF up to 10MB
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-sm font-semibold text-slate-700">
-                              {uploadingPaperId === paper.id
-                                ? "Uploading..."
-                                : "Click to upload or drag and drop"}
-                            </p>
-                            <p className="mt-1 text-xs text-slate-400 font-medium">
-                              PDF up to 10MB
-                            </p>
-                          </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </CardContent>
                   </Card>
                 ))}
@@ -426,14 +443,19 @@ export default function ExamDetailPage() {
                     Student Name
                   </th>
 
-                  {exam.papers.map((p) => (
-                    <th
-                      key={p.id}
-                      className="py-3 px-4 text-left font-semibold"
-                    >
-                      {p.subject_name}
-                    </th>
-                  ))}
+                  {exam.papers.flatMap((p) =>
+                    (p.components || []).map((c) => (
+                      <th
+                        key={c.id || `${p.id}-${c.type}`}
+                        className="py-3 px-4 text-left font-semibold text-xs"
+                      >
+                        {p.subject_name}{" "}
+                        <span className="font-normal text-muted-foreground">
+                          ({c.type?.toLowerCase()})
+                        </span>
+                      </th>
+                    )),
+                  )}
                 </tr>
               </thead>
 
@@ -449,32 +471,42 @@ export default function ExamDetailPage() {
                       </td>
                       <td className="py-3 px-4">{s.fullName}</td>
 
-                      {exam.papers.map((paper) => {
-                        const matchingResult = s.examResults.find(
-                          (r) => r.examPaper.id === paper.id,
-                        );
+                      {exam.papers.flatMap((p) =>
+                        (p.components || []).map((c) => {
+                          const matchingResult = s.examResults.find(
+                            (r) => r.component.id === c.id,
+                          );
 
-                        return (
-                          <td key={paper.id} className="py-3 px-4 font-medium">
-                            {matchingResult ? (
-                              <span>
-                                {matchingResult.marksObtained} (
-                                {matchingResult.status})
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 italic text-xs">
-                                No Record
-                              </span>
-                            )}
-                          </td>
-                        );
-                      })}
+                          return (
+                            <td
+                              key={c.id || `${p.id}-${c.type}`}
+                              className="py-3 px-4 font-medium"
+                            >
+                              {matchingResult ? (
+                                <span>
+                                  {matchingResult.marksObtained} (
+                                  {matchingResult.status})
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic text-xs">
+                                  No Record
+                                </span>
+                              )}
+                            </td>
+                          );
+                        }),
+                      )}
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td
-                      colSpan={exam.papers.length + 2}
+                      colSpan={
+                        exam.papers.reduce(
+                          (a, p) => a + (p.components?.length || 0),
+                          0,
+                        ) + 2
+                      }
                       className="py-6 text-center text-muted-foreground"
                     >
                       No Student found

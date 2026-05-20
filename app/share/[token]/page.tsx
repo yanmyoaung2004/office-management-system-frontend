@@ -28,6 +28,20 @@ interface ShareStudent {
   examResults: ShareExamResult[];
 }
 
+interface ShareComponent {
+  id: number;
+  type: string;
+  marks_allocated: number;
+  duration: string;
+  exam_date: string;
+}
+
+interface SharePaper {
+  id: number;
+  subject_name: string;
+  components: ShareComponent[];
+}
+
 interface ShareData {
   exam: {
     id: string;
@@ -35,11 +49,7 @@ interface ShareData {
     date_started: string;
     semester_name: string;
   };
-  paper: {
-    id: string;
-    subject_name: string;
-    total_marks: number;
-  };
+  paper: SharePaper;
   eligible_students: ShareStudent[];
 }
 
@@ -92,7 +102,7 @@ export default function SharePage() {
     const results = data.eligible_students
       .filter((s) => marks[s.id] !== undefined && marks[s.id] !== "")
       .map((s) => ({
-        student: s.student_id,
+        student: s.studentSchoolId,
         marks_obtained: Number(marks[s.id]),
         status: "PENDING",
         remarks: remarks[s.id] || "",
@@ -180,7 +190,16 @@ export default function SharePage() {
           <CardTitle className="text-xl">{data.exam.title}</CardTitle>
           <div className="flex gap-3 text-sm text-muted-foreground mt-2">
             <Badge variant="secondary">{data.paper.subject_name}</Badge>
-            <Badge variant="outline">{data.paper.total_marks} marks</Badge>
+            {data.paper.components?.[0] && (
+              <>
+                <Badge variant="outline" className="capitalize">
+                  {data.paper.components[0].type?.toLowerCase()}
+                </Badge>
+                <Badge variant="outline">
+                  {data.paper.components[0].marks_allocated} marks
+                </Badge>
+              </>
+            )}
             <Badge variant="outline">{data.exam.semester_name}</Badge>
           </div>
         </CardHeader>
@@ -220,7 +239,7 @@ export default function SharePage() {
                   </th>
                   <th className="py-2 px-3 text-left font-medium">Name</th>
                   <th className="py-2 px-3 text-left font-medium w-28">
-                    Marks / {data.paper.total_marks}
+                    Marks / {data.paper.components?.[0]?.marks_allocated || "?"}
                   </th>
                   <th className="py-2 px-3 text-left font-medium">Remarks</th>
                 </tr>
@@ -242,7 +261,7 @@ export default function SharePage() {
                           <Input
                             type="number"
                             min={0}
-                            max={data.paper.total_marks}
+                            max={data.paper.components?.[0]?.marks_allocated || 999}
                             className="h-8 text-xs w-full"
                             placeholder="-"
                             value={marks[s.id] ?? ""}
@@ -258,7 +277,7 @@ export default function SharePage() {
                             {existing.marksObtained}
                             <span className="text-muted-foreground font-normal">
                               {" "}
-                              / {data.paper.total_marks}
+                              / {data.paper.components?.[0]?.marks_allocated || "?"}
                             </span>
                           </span>
                         ) : (
