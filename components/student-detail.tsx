@@ -400,7 +400,7 @@ export function StudentDetail({
               </div>
 
               {/* Admin Actions */}
-              {currentRole === "Admissions" && (
+              {currentRole === "Admissions" && student && (
                 <div className="pt-6 space-y-3">
                   {student.status !== "Dropout" &&
                     student.status !== "Enrolled" && (
@@ -408,7 +408,7 @@ export function StudentDetail({
                         <ReactivateModal
                           onReactivate={onReactivate}
                           credential={{
-                            studentId: student.studentId as string,
+                            studentId: student.id as string,
                             scholar: student.scholar,
                             registrationFee: student.registrationFee,
                             firstInstallmentFee: student.firstInstallmentFee,

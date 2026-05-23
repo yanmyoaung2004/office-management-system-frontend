@@ -219,6 +219,7 @@ export default function ExamDetailPage() {
           (p.components || []).map((c) => ({ ...c, subject_name: p.subject_name }))
         )}
         students={students}
+        examId={exam.id || examId}
       />
       <Card>
         <CardContent>
@@ -484,8 +485,13 @@ export default function ExamDetailPage() {
                             >
                               {matchingResult ? (
                                 <span>
-                                  {matchingResult.marksObtained} (
-                                  {matchingResult.status})
+                                  {Math.round(
+                                    (matchingResult.marksObtained /
+                                      matchingResult.component.marks_allocated) *
+                                      100 *
+                                      100,
+                                  ) / 100}{" "}
+                                  ({matchingResult.status})
                                 </span>
                               ) : (
                                 <span className="text-slate-400 italic text-xs">

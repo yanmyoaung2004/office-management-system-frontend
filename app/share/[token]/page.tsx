@@ -77,9 +77,10 @@ export default function SharePage() {
           setData(json.data);
           const initialMarks: Record<string, string> = {};
           const initialRemarks: Record<string, string> = {};
+          const alloc = json.data.paper.components?.[0]?.marks_allocated || 0;
           for (const s of json.data.eligible_students) {
             const existing = s.examResults?.[0];
-            initialMarks[s.id] = existing ? String(existing.marksObtained) : "";
+            initialMarks[s.id] = existing ? unscaleMark(existing.marksObtained, alloc) : "";
             initialRemarks[s.id] = existing ? existing.remarks : "";
           }
           setMarks(initialMarks);
@@ -96,14 +97,24 @@ export default function SharePage() {
     fetchData();
   }, [token]);
 
+  const scaleMark = (entered: number, allocated: number): number =>
+    Math.round((entered / 100) * allocated * 100) / 100;
+
+  const unscaleMark = (stored: number, allocated: number): string => {
+    if (!allocated) return String(stored);
+    return String(Math.round((stored / allocated) * 100 * 100) / 100);
+  };
+
   const handleSubmit = async () => {
     if (!data) return;
+
+    const allocated = data.paper.components?.[0]?.marks_allocated || 0;
 
     const results = data.eligible_students
       .filter((s) => marks[s.id] !== undefined && marks[s.id] !== "")
       .map((s) => ({
         student: s.studentSchoolId,
-        marks_obtained: Number(marks[s.id]),
+        marks_obtained: scaleMark(Number(marks[s.id]), allocated),
         status: "PENDING",
         remarks: remarks[s.id] || "",
       }));
@@ -239,7 +250,7 @@ export default function SharePage() {
                   </th>
                   <th className="py-2 px-3 text-left font-medium">Name</th>
                   <th className="py-2 px-3 text-left font-medium w-28">
-                    Marks / {data.paper.components?.[0]?.marks_allocated || "?"}
+                    Marks / 100
                   </th>
                   <th className="py-2 px-3 text-left font-medium">Remarks</th>
                 </tr>
@@ -261,7 +272,7 @@ export default function SharePage() {
                           <Input
                             type="number"
                             min={0}
-                            max={data.paper.components?.[0]?.marks_allocated || 999}
+                            max={100}
                             className="h-8 text-xs w-full"
                             placeholder="-"
                             value={marks[s.id] ?? ""}
@@ -274,10 +285,10 @@ export default function SharePage() {
                           />
                         ) : existing ? (
                           <span className="text-sm font-medium">
-                            {existing.marksObtained}
+                            {unscaleMark(Number(existing.marksObtained), data.paper.components?.[0]?.marks_allocated || 0)}
                             <span className="text-muted-foreground font-normal">
                               {" "}
-                              / {data.paper.components?.[0]?.marks_allocated || "?"}
+                              / 100
                             </span>
                           </span>
                         ) : (
