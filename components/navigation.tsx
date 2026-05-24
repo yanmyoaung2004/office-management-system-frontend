@@ -81,6 +81,12 @@ export function Navigation() {
         roles: ["Exam Staff"],
         permissions: ["view_exam"],
       },
+      {
+        id: "/exam/teachers",
+        label: "Teachers",
+        roles: ["Exam Staff"],
+        permissions: ["view_exam"],
+      },
     ],
   };
 

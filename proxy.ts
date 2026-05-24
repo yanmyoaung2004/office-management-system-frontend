@@ -21,6 +21,7 @@ export function proxy(request: NextRequest) {
     "/exam",
     "/exam/intakes",
     "/exam/exams",
+    "/exam/teachers",
     "/operation",
     "/dashboard",
     "/share",
@@ -32,6 +33,7 @@ export function proxy(request: NextRequest) {
   // 2. Dynamic Pattern Checks (Regex or startsWith)
   // Logic for /exam/exams/[ID] and /exam/exams/[ID]/export
   const isExamRoute = pathname.startsWith("/exam/exams/");
+  const isExamTeacherRoute = pathname.startsWith("/exam/teachers/");
 
   // Logic for /intakes/[ID]
   const isIntakeRoute = pathname.startsWith("/intakes/");
@@ -39,7 +41,12 @@ export function proxy(request: NextRequest) {
   // Logic for /share/[token]
   const isShareRoute = pathname.startsWith("/share/");
 
-  const isValid = isStaticValid || isExamRoute || isIntakeRoute || isShareRoute;
+  const isValid =
+    isStaticValid ||
+    isExamRoute ||
+    isExamTeacherRoute ||
+    isIntakeRoute ||
+    isShareRoute;
 
   // 3. Redirection Logic
   if (!isValid) {

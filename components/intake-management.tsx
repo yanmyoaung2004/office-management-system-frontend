@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useMemo } from "react";
 import type {
   DropoutStudent,
   Intake,
@@ -24,6 +24,9 @@ import {
   generateAndDownloadProgressResult,
   type ProgressDepartment,
 } from "@/lib/DocumentGenerator";
+import { generateAndDownloadProgressResultExcel } from "@/lib/generateProgressResultExcel";
+import { SubjectFrequencies } from "@/components/exam/subject-frequencies";
+import { TimetableView } from "@/components/exam/timetable-view";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -54,6 +57,7 @@ export function IntakeManagement({
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>("");
   const [isGeneratingProgress, setIsGeneratingProgress] = useState(false);
+  const [schedulingSemesterId, setSchedulingSemesterId] = useState<string>("");
   const [formData, setFormData] = useState<Intake>({
     id: "",
     code: "",
@@ -363,6 +367,64 @@ export function IntakeManagement({
       setIsGeneratingProgress(false);
     }
   }, [selectedIntakeId, selectedSemesterId]);
+
+  const [isGeneratingProgressExcel, setIsGeneratingProgressExcel] = useState(false);
+
+  const handleGenerateProgressResultExcel = useCallback(async () => {
+    if (!selectedIntakeId || !selectedSemesterId) return;
+    setIsGeneratingProgressExcel(true);
+    try {
+      const res = await apiGet<{
+        campus: string;
+        program: string;
+        intake: string;
+        courses: { name: string; code: string }[];
+        students: { id: string; name: string; scores: number[] }[];
+      }>(
+        `/exam/intakes/${selectedIntakeId}/semesters/${selectedSemesterId}/progress-result-excel/`,
+      );
+
+      await generateAndDownloadProgressResultExcel(
+        {
+          campus: res.campus,
+          program: res.program,
+          intake: res.intake,
+          courses: res.courses,
+          students: res.students,
+        },
+        `Progress_Result_${res.intake.replace(/\s+/g, "_")}.xlsx`,
+      );
+
+      toast.success("Progress result Excel downloaded");
+    } catch (err) {
+      console.error("Progress result Excel error:", err);
+      toast.error("Failed to generate progress result Excel");
+    } finally {
+      setIsGeneratingProgressExcel(false);
+    }
+  }, [selectedIntakeId, selectedSemesterId]);
+
+  const selectedIntake = useMemo(
+    () => intakes.find((i) => i.id === selectedIntakeId),
+    [intakes, selectedIntakeId],
+  );
+
+  const schedulingMeta = useMemo(() => {
+    if (!schedulingSemesterId) return null;
+    for (const y of years) {
+      for (const s of y.semesters ?? []) {
+        if (s.id === schedulingSemesterId) {
+          const major = majors.find((m) => m.id === selectedIntake?.majorId);
+          return {
+            majorName: major?.name ?? "",
+            yearName: y.name,
+            semesterName: s.name,
+          };
+        }
+      }
+    }
+    return null;
+  }, [schedulingSemesterId, years, majors, selectedIntake]);
 
   const lastClickRef = useRef<number>(0);
   const handleDoubleClickFallback = useCallback(
@@ -886,9 +948,64 @@ export function IntakeManagement({
                     disabled={isGeneratingProgress || !selectedSemesterId}
                     className="gap-2"
                   >
-                    {isGeneratingProgress ? "Generating..." : "Generate"}
+                    {isGeneratingProgress ? "Generating..." : "Generate Word"}
+                  </Button>
+                  <Button
+                    onClick={handleGenerateProgressResultExcel}
+                    disabled={isGeneratingProgressExcel || !selectedSemesterId}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    {isGeneratingProgressExcel ? "Generating..." : "Generate Excel"}
                   </Button>
                 </div>
+              </div>
+
+              <div className="mb-4 p-4 border rounded-lg bg-muted/20">
+                <h3 className="text-sm font-semibold mb-2">
+                  Class Scheduling
+                </h3>
+                <div className="flex gap-2 items-center mb-4">
+                  <select
+                    value={schedulingSemesterId}
+                    onChange={(e) => setSchedulingSemesterId(e.target.value)}
+                    className="px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm"
+                  >
+                    <option value="">Select Semester...</option>
+                    {years.flatMap((y) =>
+                      (y.semesters ?? []).map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {y.name} - {s.name}
+                        </option>
+                      )),
+                    )}
+                  </select>
+                </div>
+                {schedulingSemesterId && (
+                  <div className="space-y-4">
+                    <div className="border border-border rounded-md p-4 bg-card">
+                      <h4 className="text-sm font-semibold mb-3">
+                        Subject Frequencies
+                      </h4>
+                      <SubjectFrequencies
+                        intakeId={selectedIntakeId!}
+                        semesterId={schedulingSemesterId}
+                        majorName={schedulingMeta?.majorName}
+                        yearName={schedulingMeta?.yearName}
+                        semesterName={schedulingMeta?.semesterName}
+                      />
+                    </div>
+                    <div className="border border-border rounded-md p-4 bg-card">
+                      <h4 className="text-sm font-semibold mb-3">
+                        Timetable
+                      </h4>
+                      <TimetableView
+                        intakeId={selectedIntakeId!}
+                        semesterId={schedulingSemesterId}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="overflow-x-auto">
