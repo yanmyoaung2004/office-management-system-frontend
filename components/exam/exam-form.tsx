@@ -494,7 +494,7 @@ export default function ExamForm({
                   {paper.components.map((comp, compIndex) => (
                     <div
                       key={compIndex}
-                      className="space-y-4 rounded-lg border bg-white p-4"
+                      className="space-y-4 rounded-lg border bg-card p-4"
                     >
                       <div className="flex items-center justify-between">
                         <Label className="text-xs font-semibold uppercase text-muted-foreground">

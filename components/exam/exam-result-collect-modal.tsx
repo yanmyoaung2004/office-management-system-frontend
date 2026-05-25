@@ -604,7 +604,7 @@ export function ExamResultCollectModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={`flex flex-col p-6 overflow-hidden bg-white ${
+        className={`flex flex-col p-6 overflow-hidden bg-card ${
           resultMode === "subject" ||
           (method === "manual" && selectedComponentId !== null)
             ? "sm:max-w-3xl"
@@ -626,7 +626,7 @@ export function ExamResultCollectModal({
             type="button"
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
               resultMode === "component"
-                ? "bg-white text-foreground shadow-sm"
+                ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => setResultMode("component")}
@@ -638,7 +638,7 @@ export function ExamResultCollectModal({
             type="button"
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
               resultMode === "subject"
-                ? "bg-white text-foreground shadow-sm"
+                ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => setResultMode("subject")}
@@ -996,7 +996,7 @@ export function ExamResultCollectModal({
                     {subjectComponents.map((comp) => (
                       <span
                         key={comp.type}
-                        className="inline-flex items-center gap-1.5 rounded-full border bg-white px-3 py-1 text-xs font-medium"
+                        className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-xs font-medium"
                       >
                         <span className="capitalize">
                           {typeLabel(comp.type)}

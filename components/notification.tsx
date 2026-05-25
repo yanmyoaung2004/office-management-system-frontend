@@ -100,7 +100,7 @@ export function Notification({ currentRole }: NotificationProps) {
       case "DOCUMENT":
         return "bg-yellow-50 border-l-4 border-yellow-500";
       default:
-        return "bg-gray-50 border-l-4 border-gray-500";
+        return "bg-muted border-l-4 border-muted-foreground";
     }
   };
 

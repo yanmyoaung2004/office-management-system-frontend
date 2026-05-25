@@ -1,35 +1,24 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useState, useMemo } from "react";
+import { useState, useCallback } from "react";
 import useSWR from "swr";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from "@/components/ui/alert-dialog";
-import { Edit, Plus, Trash2, Eye, Loader2, Search } from "lucide-react";
-import { Pagination } from "@/components/pagination";
-import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
-import { toast } from "sonner";
+import { Eye, Edit, Trash2, X, Plus, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { EntityList } from "@/components/entity-list";
 import { SubjectHierarchySelector } from "./subject-hierarchy-selector";
+import { apiGet, apiDelete, apiPost, apiPut } from "@/lib/api-client";
+import { teacherSchema, teacherDefaultValues, type TeacherFormValues } from "@/schemas/teacher";
+import type { EntityListConfig } from "@/types/forms";
 
 interface SubjectDisplay {
   id: string;
@@ -39,6 +28,7 @@ interface SubjectDisplay {
 
 interface Teacher {
   id: string;
+  type: "FULL_TIME" | "PART_TIME";
   name: string;
   phone_number: string;
   email: string;
@@ -48,24 +38,14 @@ interface Teacher {
   updated_at: string;
 }
 
-const ITEMS_PER_PAGE = 10;
-
 export function TeacherManagement() {
   const router = useRouter();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Teacher | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    phone_number: "",
-    email: "",
-    subject_ids: [] as string[],
-  });
-  const [saving, setSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: response, mutate } = useSWR<{
+  const { data: response, mutate, isLoading } = useSWR<{
     success: boolean;
     data: Teacher[];
   }>("/exam/teachers/", apiGet, {
@@ -73,77 +53,14 @@ export function TeacherManagement() {
     dedupingInterval: 30000,
   });
 
-  const teachers = useMemo(() => response?.data ?? [], [response?.data]);
+  const teachers = response?.data ?? [];
 
-  const filtered = useMemo(() => {
-    if (!searchQuery) return teachers;
-    const q = searchQuery.toLowerCase();
-    return teachers.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.phone_number.includes(q) ||
-        t.email?.toLowerCase().includes(q),
-    );
-  }, [teachers, searchQuery]);
+  const form = useForm<TeacherFormValues>({
+    resolver: zodResolver(teacherSchema) as any,
+    defaultValues: teacherDefaultValues,
+  });
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
-
-  const openAddForm = () => {
-    setEditingTeacher(null);
-    setFormData({ name: "", phone_number: "", email: "", subject_ids: [] });
-    setShowForm(true);
-  };
-
-  const openEditForm = (teacher: Teacher) => {
-    setEditingTeacher(teacher);
-    setFormData({
-      name: teacher.name,
-      phone_number: teacher.phone_number,
-      email: teacher.email ?? "",
-      subject_ids: [...(teacher.subject_ids ?? [])],
-    });
-    setShowForm(true);
-  };
-
-  const handleSave = async () => {
-    if (!formData.name.trim()) {
-      toast.error("Name is required");
-      return;
-    }
-    if (!formData.phone_number.trim()) {
-      toast.error("Phone number is required");
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        name: formData.name.trim(),
-        phone_number: formData.phone_number.trim(),
-        email: formData.email.trim() || undefined,
-        subject_ids: formData.subject_ids,
-      };
-
-      if (editingTeacher) {
-        await apiPut(`/exam/teachers/${editingTeacher.id}/`, payload);
-        toast.success("Teacher updated");
-      } else {
-        await apiPost("/exam/teachers/", payload);
-        toast.success("Teacher created");
-      }
-      setShowForm(false);
-      mutate();
-    } catch {
-      toast.error("Failed to save teacher");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
     try {
       await apiDelete(`/exam/teachers/${deleteTarget.id}/`);
@@ -153,239 +70,275 @@ export function TeacherManagement() {
     } catch {
       toast.error("Failed to delete teacher");
     }
+  }, [deleteTarget, mutate]);
+
+  const openCreate = useCallback(() => {
+    setEditingTeacher(null);
+    form.reset(teacherDefaultValues);
+    setShowForm(true);
+  }, [form]);
+
+  const openEdit = useCallback((teacher: Teacher) => {
+    setEditingTeacher(teacher);
+    form.reset({
+      name: teacher.name,
+      phone_number: teacher.phone_number,
+      email: teacher.email ?? "",
+      type: teacher.type,
+      subject_ids: teacher.subject_ids ?? [],
+    });
+    setShowForm(true);
+  }, [form]);
+
+  const closeForm = useCallback(() => {
+    setShowForm(false);
+    setEditingTeacher(null);
+    form.reset(teacherDefaultValues);
+  }, [form]);
+
+  const handleSubmit = useCallback(async (data: TeacherFormValues) => {
+    setIsSubmitting(true);
+    try {
+      if (editingTeacher) {
+        await apiPut(`/exam/teachers/${editingTeacher.id}/`, data);
+        toast.success("Teacher updated successfully");
+      } else {
+        const res: any = await apiPost("/exam/teachers/", data);
+        if (res?.data?.id) {
+          router.push(`/exam/teachers/${res.data.id}`);
+        }
+        toast.success("Teacher created successfully");
+      }
+      mutate();
+      closeForm();
+    } catch {
+      toast.error(editingTeacher ? "Failed to update teacher" : "Failed to create teacher");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [editingTeacher, router, mutate, closeForm]);
+
+  const subjectIds = form.watch("subject_ids");
+
+  const listConfig: EntityListConfig<Teacher> = {
+    columns: [
+      {
+        key: "type",
+        header: "Type",
+        render: (t) => (
+          <Badge variant={t.type === "FULL_TIME" ? "default" : "secondary"} className="text-xs">
+            {t.type === "FULL_TIME" ? "Full-Time" : "Part-Time"}
+          </Badge>
+        ),
+      },
+      { key: "name", header: "Name", sortable: true },
+      { key: "phone_number", header: "Phone" },
+      {
+        key: "email",
+        header: "Email",
+        render: (t) => (
+          <span className="text-muted-foreground">{t.email || "-"}</span>
+        ),
+      },
+      {
+        key: "subjects_display",
+        header: "Subjects",
+        render: (t) =>
+          t.subjects_display.length === 0 ? (
+            <span className="text-muted-foreground text-xs">None</span>
+          ) : (
+            <div className="flex flex-wrap gap-1">
+              {t.subjects_display.map((s) => (
+                <Badge key={s.id} variant="outline" className="text-xs">
+                  {s.code}
+                </Badge>
+              ))}
+            </div>
+          ),
+      },
+    ],
+    searchFields: ["name", "phone_number", "email"],
+    itemsPerPage: 10,
+    rowActions: (teacher: Teacher) => (
+      <div className="flex gap-1 justify-end">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            router.push(`/exam/teachers/${teacher.id}`);
+          }}
+          title="View details"
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            openEdit(teacher);
+          }}
+          title="Edit"
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-destructive hover:text-destructive"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            setDeleteTarget(teacher);
+          }}
+          title="Delete"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    ),
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
-        <Button onClick={openAddForm} className="gap-2">
+    <>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold text-foreground">
+          All Teachers ({teachers.length})
+        </h1>
+        <Button onClick={openCreate} className="gap-2">
           <Plus className="h-4 w-4" />
           Add Teacher
         </Button>
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, phone or email..."
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="pl-8 bg-white"
-        />
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <span>All Teachers ({teachers.length})</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 font-semibold">No</th>
-                  <th className="text-left py-3 px-4 font-semibold">Name</th>
-                  <th className="text-left py-3 px-4 font-semibold">Phone</th>
-                  <th className="text-left py-3 px-4 font-semibold">Email</th>
-                  <th className="text-left py-3 px-4 font-semibold">
-                    Subjects
-                  </th>
-                  <th className="text-right py-3 px-4 font-semibold">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      No teachers found
-                    </td>
-                  </tr>
-                ) : (
-                  paginated.map((teacher, idx) => (
-                    <tr
-                      key={teacher.id}
-                      className="border-b border-border hover:bg-muted/50"
-                    >
-                      <td className="py-3 px-4">
-                        {(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}
-                      </td>
-                      <td className="py-3 px-4 font-medium">{teacher.name}</td>
-                      <td className="py-3 px-4">{teacher.phone_number}</td>
-                      <td className="py-3 px-4 text-muted-foreground">
-                        {teacher.email || "-"}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {teacher.subjects_display.length === 0 ? (
-                            <span className="text-muted-foreground text-xs">
-                              None
-                            </span>
-                          ) : (
-                            teacher.subjects_display.map((s) => (
-                              <Badge
-                                key={s.id}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {s.code}
-                              </Badge>
-                            ))
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              router.push(`/exam/teachers/${teacher.id}`)
-                            }
-                            title="View details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditForm(teacher)}
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteTarget(teacher)}
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          )}
-        </CardContent>
 
-        <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent className="min-w-xl sm:min-w-lg">
-            <DialogHeader>
-              <DialogTitle>
-                {editingTeacher ? "Edit Teacher" : "Add Teacher"}
-              </DialogTitle>
-              <DialogDescription>
-                {editingTeacher
-                  ? "Update the teacher's information and subjects."
-                  : "Fill in the details to create a new teacher."}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">
-                  Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                  placeholder="e.g. John Doe"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">
-                  Phone <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="phone"
-                  value={formData.phone_number}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      phone_number: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g. +260991234567"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, email: e.target.value }))
-                  }
-                  placeholder="e.g. john@sti.edu"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Subjects</Label>
-                <SubjectHierarchySelector
-                  selectedIds={formData.subject_ids}
-                  onChange={(ids) =>
-                    setFormData((prev) => ({ ...prev, subject_ids: ids }))
-                  }
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowForm(false)}
-                  disabled={saving}
+      {showForm && (
+        <Card className="p-6 mb-6 bg-card border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">
+              {editingTeacher ? "Edit Teacher" : "New Teacher"}
+            </h2>
+            <Button variant="ghost" size="sm" onClick={closeForm}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <form onSubmit={form.handleSubmit(handleSubmit as any)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium block mb-2">
+                  Type <span className="text-destructive">*</span>
+                </label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  {...form.register("type")}
                 >
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} disabled={saving}>
-                  {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                  {editingTeacher ? "Update" : "Create"}
-                </Button>
+                  <option value="FULL_TIME">Full-Time</option>
+                  <option value="PART_TIME">Part-Time</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-2">
+                  Name <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  placeholder="e.g. John Doe"
+                  {...form.register("name")}
+                />
+                {form.formState.errors.name && (
+                  <p className="text-xs text-destructive mt-1">
+                    {form.formState.errors.name.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-2">
+                  Phone <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  placeholder="e.g. +260991234567"
+                  {...form.register("phone_number")}
+                />
+                {form.formState.errors.phone_number && (
+                  <p className="text-xs text-destructive mt-1">
+                    {form.formState.errors.phone_number.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-2">
+                  Email
+                </label>
+                <Input
+                  type="email"
+                  placeholder="e.g. john@sti.edu"
+                  {...form.register("email")}
+                />
+                {form.formState.errors.email && (
+                  <p className="text-xs text-destructive mt-1">
+                    {form.formState.errors.email.message}
+                  </p>
+                )}
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
 
-        <AlertDialog
-          open={deleteTarget !== null}
-          onOpenChange={(open) => {
-            if (!open) setDeleteTarget(null);
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Teacher</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete &quot;{deleteTarget?.name}
-                &quot;? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </Card>
-    </div>
+            <div>
+              <label className="text-sm font-medium block mb-2">
+                Subject Assignment
+              </label>
+              <p className="text-xs text-muted-foreground mb-3">
+                Select the subjects this teacher can teach
+              </p>
+              <SubjectHierarchySelector
+                selectedIds={subjectIds ?? []}
+                onChange={(ids) => form.setValue("subject_ids", ids)}
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                )}
+                {isSubmitting
+                  ? "Saving..."
+                  : editingTeacher
+                    ? "Update Teacher"
+                    : "Create Teacher"}
+              </Button>
+              <Button type="button" variant="outline" onClick={closeForm}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      <EntityList
+        config={listConfig}
+        data={teachers}
+        isLoading={isLoading}
+        searchPlaceholder="Search by name, phone or email..."
+      />
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Teacher</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &ldquo;{deleteTarget?.name}
+              &rdquo;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

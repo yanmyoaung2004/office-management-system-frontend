@@ -76,7 +76,7 @@ export default function ChartsSection({
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-75 text-gray-500">
+              <div className="flex items-center justify-center h-75 text-muted-foreground">
                 No data available
               </div>
             )}
@@ -122,7 +122,7 @@ export default function ChartsSection({
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-75 text-gray-500">
+              <div className="flex items-center justify-center h-75 text-muted-foreground">
                 No data available
               </div>
             )}
@@ -168,7 +168,7 @@ export default function ChartsSection({
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-75 text-gray-500">
+              <div className="flex items-center justify-center h-75 text-muted-foreground">
                 No data available
               </div>
             )}

@@ -206,7 +206,7 @@ export function SubjectManagement({
                   setPendingSubjects([{ code: "", name: "", description: "" }]);
                 }}
               >
-                <SelectTrigger className="w-full bg-white">
+                <SelectTrigger className="w-full bg-background">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,7 +226,7 @@ export function SubjectManagement({
                 onValueChange={handleSemesterSelect}
                 disabled={!selectedYearId}
               >
-                <SelectTrigger className="w-full bg-white">
+                <SelectTrigger className="w-full bg-background">
                   <SelectValue placeholder="Select semester" />
                 </SelectTrigger>
                 <SelectContent>
@@ -275,12 +275,12 @@ export function SubjectManagement({
                     {pendingSubjects.map((ps, i) => (
                       <div
                         key={i}
-                        className="flex gap-1.5 items-start border border-gray-200 rounded-md p-2 bg-blue-50"
+                        className="flex gap-1.5 items-start border border-border rounded-md p-2 bg-blue-50"
                       >
                         <div className="w-full space-y-2">
                           <div className="grid grid-cols-4 gap-2 w-full">
                             <Input
-                              className="bg-white text-sm col-span-2"
+                              className="bg-background text-sm col-span-2"
                               placeholder="Code *"
                               value={ps.code}
                               onChange={(e) =>
@@ -288,7 +288,7 @@ export function SubjectManagement({
                               }
                             />
                             <Input
-                              className="bg-white text-sm col-span-2"
+                              className="bg-background text-sm col-span-2"
                               placeholder="Name *"
                               value={ps.name}
                               onChange={(e) =>
@@ -297,7 +297,7 @@ export function SubjectManagement({
                             />
                           </div>
                           <Input
-                            className="flex-1 bg-white text-sm"
+                            className="flex-1 bg-background text-sm"
                             placeholder="Description (optional)"
                             value={ps.description}
                             onChange={(e) =>

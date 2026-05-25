@@ -2,8 +2,17 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { FileSearch, Edit, MoreVertical, Trash2 } from "lucide-react";
-import { ConfirmationPopup } from "./confirmation-popup";
 
 interface ActionCellProps {
   itemId: string;
@@ -19,6 +28,7 @@ export default function ActionCell({
   onUpdate,
 }: ActionCellProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
     <div className="relative">
@@ -60,25 +70,43 @@ export default function ActionCell({
               Update
             </Button>
 
-            <ConfirmationPopup
-              itemId={itemId}
-              onAllow={onDelete}
-              onCancel={() => {}}
-              onButtonText="Delete"
-              onButtonVariant="ghost"
-              onAllowButtonText="Allow"
-              onCancelButtonText="Don't allow"
-              primaryText="Allow to delete?"
-              description="Do you want to allow this intake to be deleted permanently?"
-              buttonIcon={Trash2}
-              buttonClass={
-                "justify-start text-destructive hover:bg-destructive/80"
-              }
-              iconClass="h-4 w-4 mr-2"
-            />
+            <Button
+              onClick={() => {
+                setIsOpen(false);
+                setShowDeleteConfirm(true);
+              }}
+              variant="ghost"
+              size="sm"
+              className="justify-start text-destructive hover:bg-destructive/80"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => !open && setShowDeleteConfirm(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Allow to delete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Do you want to allow this item to be deleted permanently?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeleteConfirm(false)}>
+              Don&apos;t allow
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => onDelete(itemId)}>
+              Allow
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -21,6 +21,7 @@ interface SubjectDisplay {
 
 interface Teacher {
   id: string;
+  type: "FULL_TIME" | "PART_TIME";
   name: string;
   phone_number: string;
   email: string;
@@ -170,7 +171,9 @@ export function TeacherDetail({ teacherId }: TeacherDetailProps) {
 
     try {
       await apiPost(`/exam/teachers/${teacherId}/availability/`, {
-        availabilities,
+        availabilities: availabilities.map(
+          ({ teacher: _t, intake: _i, subject: _s, ...rest }) => rest,
+        ),
       });
 
       toast.success("Availability saved successfully");
@@ -212,7 +215,17 @@ export function TeacherDetail({ teacherId }: TeacherDetailProps) {
             </div>
 
             <div className="space-y-1">
-              <div>{teacher.name}</div>
+              <div className="flex items-center gap-2">
+                {teacher.name}
+                <Badge
+                  variant={
+                    teacher.type === "FULL_TIME" ? "default" : "secondary"
+                  }
+                  className="text-xs"
+                >
+                  {teacher.type === "FULL_TIME" ? "Full-Time" : "Part-Time"}
+                </Badge>
+              </div>
 
               <div className="text-sm font-normal text-muted-foreground">
                 {teacher.email || "No email"}
@@ -346,7 +359,7 @@ export function TeacherDetail({ teacherId }: TeacherDetailProps) {
                             ) : (
                               <div className="space-y-0.5">
                                 <div className="text-xs text-center font-semibold text-foreground">
-                                  {intakeName} {subjectCode}
+                                  {intakeName} - {subjectCode}
                                 </div>
                                 <div className="text-[10px] text-center text-muted-foreground">
                                   Unavailable

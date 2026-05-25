@@ -106,7 +106,7 @@ export function Dashboard({ students, majors }: DashboardProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white border rounded-lg shadow p-4">
+        <div className="bg-card border rounded-lg shadow-sm p-4">
           <div className="pb-0">
             <div className="text-sm font-medium text-muted-foreground">
               Total Students
@@ -121,7 +121,7 @@ export function Dashboard({ students, majors }: DashboardProps) {
             </p>
           </div>
         </div>
-        <div className="bg-white border rounded-lg shadow p-4">
+        <div className="bg-card border rounded-lg shadow-sm p-4">
           <div className="pb-0">
             <div className="text-sm font-medium text-muted-foreground">
               Enrolled
@@ -136,7 +136,7 @@ export function Dashboard({ students, majors }: DashboardProps) {
             </p>
           </div>
         </div>
-        <div className="bg-white border rounded-lg shadow p-4">
+        <div className="bg-card border rounded-lg shadow-sm p-4">
           <div className="pb-0">
             <div className="text-sm font-medium text-muted-foreground">
               Graduated
@@ -149,7 +149,7 @@ export function Dashboard({ students, majors }: DashboardProps) {
             <p className="text-xs text-muted-foreground mt-1">Completed</p>
           </div>
         </div>
-        <div className="bg-white border rounded-lg shadow p-4">
+        <div className="bg-card border rounded-lg shadow-sm p-4">
           <div className="pb-0">
             <div className="text-sm font-medium text-muted-foreground">
               Interrupt
@@ -162,7 +162,7 @@ export function Dashboard({ students, majors }: DashboardProps) {
             <p className="text-xs text-muted-foreground mt-1">Discontinued</p>
           </div>
         </div>
-        <div className="bg-white border rounded-lg shadow p-4">
+        <div className="bg-card border rounded-lg shadow-sm p-4">
           <div className="pb-0">
             <div className="text-sm font-medium text-muted-foreground">
               Dropouts
@@ -245,7 +245,7 @@ export function Dashboard({ students, majors }: DashboardProps) {
       </div>
       <div>
         <Card className="mb-6 p-6">
-          <h2 className="text-2xl font-semibold text-gray-800">{getTitle()}</h2>
+          <h2 className="text-2xl font-semibold text-foreground">{getTitle()}</h2>
         </Card>
 
         {/* Charts */}
@@ -256,8 +256,8 @@ export function Dashboard({ students, majors }: DashboardProps) {
             title={getTitle()}
           />
         ) : (
-          <div className="bg-white rounded-lg p-12 text-center">
-            <p className="text-gray-500 text-lg">
+          <div className="bg-card rounded-lg p-12 text-center">
+            <p className="text-muted-foreground text-lg">
               Select filters above to view student data and analytics
             </p>
           </div>

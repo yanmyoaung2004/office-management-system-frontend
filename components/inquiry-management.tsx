@@ -1,18 +1,21 @@
 "use client";
 
-import React from "react";
-
-import { useState } from "react";
-import type {
-  Enquiry,
-  FollowUpSession,
-  EnquiryType,
-  SourceOfInformation,
-  UserRole,
-} from "@/types";
+import { useState, useCallback } from "react";
+import useSWR from "swr";
+import type { Enquiry, FollowUpSession, UserRole } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ChevronDown,
   ChevronUp,
@@ -21,54 +24,27 @@ import {
   MessageSquare,
   Edit,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Pagination } from "@/components/pagination";
-import { ConfirmationPopup } from "./confirmation-popup";
-import { Textarea } from "./ui/textarea";
+import { EntityFormDialog } from "@/components/entity-form";
+import { enquiryFormConfig } from "@/form-configs/enquiry";
+import { apiGet, apiDelete, apiPost, apiPut } from "@/lib/api-client";
+import { useAuth } from "@/context/AuthContext";
 
 const ITEMS_PER_PAGE = 8;
 
-interface InquiryManagementProps {
-  enquiries: Enquiry[];
-  currentRole: UserRole;
-  onAddEnquiry: (enquiry: Omit<Enquiry, "id">) => void;
-  onDeleteEnquiry: (enquiryId: string) => void;
-  onDeleteFollowUp: (id: string) => void;
-  onUpdateFollowUp: (followupId: string, followUp: FollowUpSession) => void;
-  onAddFollowUp: (
-    enquiryId: string,
-    followUp: Omit<FollowUpSession, "id" | "enquiryId">,
-  ) => void;
-}
+export function InquiryManagement() {
+  const { user } = useAuth();
+  const currentRole = user?.role as UserRole;
 
-export function InquiryManagement({
-  enquiries,
-  currentRole,
-  onAddEnquiry,
-  onDeleteEnquiry,
-  onDeleteFollowUp,
-  onAddFollowUp,
-  onUpdateFollowUp,
-}: InquiryManagementProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedEnquiry, setExpandedEnquiry] = useState<string | null>(null);
-  const [showEnquiryForm, setShowEnquiryForm] = useState<boolean>(false);
+  const [showEnquiryForm, setShowEnquiryForm] = useState(false);
   const [showFollowUpForm, setShowFollowUpForm] = useState<string | null>(null);
-  const [showFollowUpFormEdit, setShowFollowUpFormEdit] =
-    useState<boolean>(false);
+  const [showFollowUpFormEdit, setShowFollowUpFormEdit] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [enquiryForm, setEnquiryForm] = useState({
-    studentName: "",
-    studentContactNo: "",
-    parentName: "",
-    parentContactNo: "",
-    address: "",
-    desiredProgram: "",
-    remark: "",
-    educationLevel: "",
-    enquiryType: "Enquiry" as EnquiryType,
-    sourceOfInformation: "Friend" as SourceOfInformation,
-    date: new Date().toISOString().split("T")[0],
-  });
+  const [deleteEnquiryTarget, setDeleteEnquiryTarget] = useState<Enquiry | null>(null);
+  const [deleteFollowUpTarget, setDeleteFollowUpTarget] = useState<FollowUpSession | null>(null);
 
   const [followUpForm, setFollowUpForm] = useState({
     id: "",
@@ -77,6 +53,16 @@ export function InquiryManagement({
     walkupFollowup: false,
     remark: "",
   });
+
+  const { data: response, mutate } = useSWR<{
+    success: boolean;
+    data: Enquiry[];
+  }>("/admission/enquiries?page=1&limit=200", apiGet, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
+  });
+
+  const enquiries = response?.data ?? [];
 
   const filteredEnquiries = enquiries.filter((enquiry) => {
     const lowerQuery = searchQuery.toLowerCase();
@@ -94,54 +80,48 @@ export function InquiryManagement({
     currentPage * ITEMS_PER_PAGE,
   );
 
-  const handleAddEnquiry = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (enquiryForm.studentName && enquiryForm.desiredProgram) {
-      onAddEnquiry({
-        date: enquiryForm.date,
-        desiredProgram: enquiryForm.desiredProgram,
-        studentName: enquiryForm.studentName,
-        educationLevel: enquiryForm.educationLevel,
-        studentContactNo: enquiryForm.studentContactNo,
-        parentName: enquiryForm.parentName,
-        parentContactNo: enquiryForm.parentContactNo,
-        address: enquiryForm.address,
-        remark: enquiryForm.remark,
-        enquiryType: enquiryForm.enquiryType,
-        sourceOfInformation: enquiryForm.sourceOfInformation,
-        followUpSessions: [],
-      });
-      setEnquiryForm({
-        studentName: "",
-        remark: "",
-        studentContactNo: "",
-        parentName: "",
-        parentContactNo: "",
-        address: "",
-        desiredProgram: "",
-        educationLevel: "",
-        enquiryType: "Enquiry",
-        sourceOfInformation: "Friend",
-        date: new Date().toISOString().split("T")[0],
-      });
-      setShowEnquiryForm(false);
+  const handleDeleteEnquiry = useCallback(async () => {
+    if (!deleteEnquiryTarget) return;
+    try {
+      await apiDelete(`/admission/enquiries/${deleteEnquiryTarget.id}`);
+      toast.success("Enquiry deleted");
+      setDeleteEnquiryTarget(null);
+      mutate();
+    } catch {
+      toast.error("Failed to delete enquiry");
     }
-  };
+  }, [deleteEnquiryTarget, mutate]);
 
-  const handleAddUpdateFollowUp = (e: React.FormEvent, enquiryId: string) => {
+  const handleDeleteFollowUp = useCallback(async () => {
+    if (!deleteFollowUpTarget) return;
+    try {
+      await apiDelete(`/admission/followups/${deleteFollowUpTarget.id}`);
+      toast.success("Follow-up session deleted");
+      setDeleteFollowUpTarget(null);
+      mutate();
+    } catch {
+      toast.error("Failed to delete follow-up session");
+    }
+  }, [deleteFollowUpTarget, mutate]);
+
+  const handleAddUpdateFollowUp = async (e: React.FormEvent, enquiryId: string) => {
     e.preventDefault();
-    if (followUpForm.handledBy) {
+    if (!followUpForm.handledBy) {
+      toast.error("Handled by is required");
+      return;
+    }
+    try {
       if (showFollowUpFormEdit) {
-        onUpdateFollowUp(followUpForm.id, {
+        await apiPut(`/admission/followups/${followUpForm.id}`, {
           id: followUpForm.id,
-          enquiryId: enquiryId,
+          enquiryId,
           date: followUpForm.date,
           handledBy: followUpForm.handledBy,
           walkupFollowup: followUpForm.walkupFollowup,
           remark: followUpForm.remark,
         });
       } else {
-        onAddFollowUp(enquiryId, {
+        await apiPost(`/admission/enquiries/${enquiryId}/followups`, {
           date: followUpForm.date,
           handledBy: followUpForm.handledBy,
           walkupFollowup: followUpForm.walkupFollowup,
@@ -157,6 +137,14 @@ export function InquiryManagement({
       });
       setShowFollowUpForm(null);
       setShowFollowUpFormEdit(false);
+      mutate();
+      toast.success(
+        showFollowUpFormEdit
+          ? "Follow-up session updated"
+          : "Follow-up session added",
+      );
+    } catch {
+      toast.error("Failed to save follow-up session");
     }
   };
 
@@ -166,7 +154,7 @@ export function InquiryManagement({
     <div className="space-y-4">
       <div className="flex gap-3">
         <Button
-          onClick={() => setShowEnquiryForm(!showEnquiryForm)}
+          onClick={() => setShowEnquiryForm(true)}
           className="gap-2"
         >
           <Plus className="h-4 w-4" />
@@ -179,236 +167,11 @@ export function InquiryManagement({
               placeholder="Search by name, program, phone, or parent name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-white text-sm"
+              className="flex-1 bg-background text-sm"
             />
           </div>
         </div>
       </div>
-
-      {showEnquiryForm && canManage && (
-        <Card className="p-6 bg-card border border-border">
-          <h2 className="text-xl font-semibold mb-4">New Inquiry</h2>
-          <form onSubmit={handleAddEnquiry} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Inquiry Date *
-                </label>
-                <Input
-                  type="date"
-                  value={enquiryForm.date}
-                  onChange={(e) =>
-                    setEnquiryForm({ ...enquiryForm, date: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Inquiry Type *
-                </label>
-                <select
-                  value={enquiryForm.enquiryType}
-                  onChange={(e) =>
-                    setEnquiryForm({
-                      ...enquiryForm,
-                      enquiryType: e.target.value as EnquiryType,
-                    })
-                  }
-                  className="text-sm w-full px-3 py-2 border border-border rounded-md bg-card text-foreground"
-                >
-                  <option value="Enquiry">Enquiry</option>
-                  <option value="Walk-in">Walk-in</option>
-                  <option value="Phone">Phone</option>
-                  <option value="Facebook">Facebook</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Student Name *
-                </label>
-                <Input
-                  placeholder="Student Name"
-                  value={enquiryForm.studentName}
-                  onChange={(e) =>
-                    setEnquiryForm({
-                      ...enquiryForm,
-                      studentName: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Student Phone No.
-                </label>
-                <Input
-                  required
-                  placeholder="Student Phone Number"
-                  value={enquiryForm.studentContactNo}
-                  onChange={(e) =>
-                    setEnquiryForm({
-                      ...enquiryForm,
-                      studentContactNo: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Desired Program *
-                </label>
-                <Input
-                  value={enquiryForm.desiredProgram}
-                  placeholder="Desired Program"
-                  onChange={(e) =>
-                    setEnquiryForm({
-                      ...enquiryForm,
-                      desiredProgram: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Education Level
-                </label>
-                <Input
-                  placeholder="Education Level"
-                  value={enquiryForm.educationLevel}
-                  onChange={(e) =>
-                    setEnquiryForm({
-                      ...enquiryForm,
-                      educationLevel: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Parent/Guardian Name
-                </label>
-                <Input
-                  required
-                  placeholder="Parent Name"
-                  value={enquiryForm.parentName}
-                  onChange={(e) =>
-                    setEnquiryForm({
-                      ...enquiryForm,
-                      parentName: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Parent Phone No.
-                </label>
-                <Input
-                  required
-                  placeholder="Parent Phone Number"
-                  value={enquiryForm.parentContactNo}
-                  onChange={(e) =>
-                    setEnquiryForm({
-                      ...enquiryForm,
-                      parentContactNo: e.target.value,
-                    })
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  Address
-                </label>
-                <Input
-                  required
-                  placeholder="Address"
-                  value={enquiryForm.address}
-                  onChange={(e) =>
-                    setEnquiryForm({ ...enquiryForm, address: e.target.value })
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">
-                  How did you hear about us? *
-                </label>
-                <select
-                  value={enquiryForm.sourceOfInformation}
-                  onChange={(e) =>
-                    setEnquiryForm({
-                      ...enquiryForm,
-                      sourceOfInformation: e.target
-                        .value as SourceOfInformation,
-                    })
-                  }
-                  className="w-full text-sm px-3 py-2 border border-border rounded-md bg-card text-foreground"
-                >
-                  <option value="Friend">Friend</option>
-                  <option value="Facebook">Facebook</option>
-                  <option value="Pamphlet">Pamphlet</option>
-                  <option value="Newspaper">Newspaper</option>
-                  <option value="Others">Others</option>
-                </select>
-              </div>
-
-              <div className="col-span-2">
-                <label className="text-sm font-medium block mb-2">Remark</label>
-                <Textarea
-                  placeholder="Remark"
-                  value={enquiryForm.remark}
-                  onChange={(e) =>
-                    setEnquiryForm({
-                      ...enquiryForm,
-                      remark: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-4">
-              <Button type="submit" className="flex-1">
-                Save Inquiry
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowEnquiryForm(false);
-                  setEnquiryForm({
-                    studentName: "",
-                    studentContactNo: "",
-                    parentName: "",
-                    parentContactNo: "",
-                    address: "",
-                    desiredProgram: "",
-                    remark: "",
-                    educationLevel: "",
-                    enquiryType: "Enquiry" as EnquiryType,
-                    sourceOfInformation: "Friend" as SourceOfInformation,
-                    date: new Date().toISOString().split("T")[0],
-                  });
-                }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
 
       <div className="space-y-3">
         {paginatedEnquiries.length > 0 ? (
@@ -637,7 +400,7 @@ export function InquiryManagement({
                                     remark: "",
                                   });
                                 }}
-                                className="flex-1 hover:bg-primary"
+                                className="flex-1"
                               >
                                 Cancel
                               </Button>
@@ -676,11 +439,11 @@ export function InquiryManagement({
                                 <p className="text-foreground py-0.5">
                                   {session.remark}
                                 </p>
-                                <div className="flex gap-3 ">
+                                <div className="flex gap-3">
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    type="submit"
+                                    type="button"
                                     onClick={() => {
                                       setFollowUpForm({
                                         id: session.id,
@@ -690,27 +453,24 @@ export function InquiryManagement({
                                         remark: session.remark,
                                       });
                                       setShowFollowUpFormEdit(true);
+                                      setShowFollowUpForm(session.enquiryId);
                                     }}
                                   >
                                     <Edit className="h-3 w-3" />
                                     Edit
                                   </Button>
-                                  <ConfirmationPopup
-                                    itemId={session.id}
-                                    onButtonVariant="outline"
-                                    onAllow={onDeleteFollowUp}
-                                    onCancel={() => {}}
-                                    onButtonText="Delete"
-                                    onAllowButtonText="Allow"
-                                    onCancelButtonText="Don't allow"
-                                    primaryText="Allow to delete?"
-                                    description="Do you want to allow this follow-up session to be deleted permanently?"
-                                    buttonIcon={Trash2}
-                                    buttonClass={
-                                      "text-destructive hover:bg-destructive/80 gap-1"
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-destructive hover:text-destructive gap-1"
+                                    type="button"
+                                    onClick={() =>
+                                      setDeleteFollowUpTarget(session)
                                     }
-                                    iconClass="h-4 w-4"
-                                  />
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    Delete
+                                  </Button>
                                 </div>
                               </div>
                             ))}
@@ -724,22 +484,15 @@ export function InquiryManagement({
 
                     {canManage && (
                       <div className="pt-2 border-t border-border">
-                        <ConfirmationPopup
-                          iconClass="h-4 w-4"
-                          itemId={enquiry.id}
-                          onAllow={onDeleteEnquiry}
-                          onCancel={() => {}}
-                          onButtonText="Delete Inquiry"
-                          onButtonVariant="outline"
-                          onAllowButtonText="Allow"
-                          onCancelButtonText="Don't allow"
-                          primaryText="Allow to delete?"
-                          description="Do you want to allow this inquiry to be deleted permanently?"
-                          buttonIcon={Trash2}
-                          buttonClass={
-                            "text-destructive hover:bg-destructive/80 gap-1 w-full"
-                          }
-                        />
+                        <Button
+                          variant="outline"
+                          className="text-destructive hover:text-destructive gap-1 w-full"
+                          type="button"
+                          onClick={() => setDeleteEnquiryTarget(enquiry)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete Inquiry
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -763,6 +516,58 @@ export function InquiryManagement({
           </div>
         )}
       </div>
+
+      <EntityFormDialog
+        config={enquiryFormConfig}
+        open={showEnquiryForm}
+        onOpenChange={(open) => {
+          setShowEnquiryForm(open);
+        }}
+        onSuccess={() => mutate()}
+      />
+
+      <AlertDialog
+        open={!!deleteEnquiryTarget}
+        onOpenChange={(open) => !open && setDeleteEnquiryTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Enquiry</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the enquiry for &ldquo;
+              {deleteEnquiryTarget?.studentName}&rdquo;? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteEnquiry}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!deleteFollowUpTarget}
+        onOpenChange={(open) => !open && setDeleteFollowUpTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Follow-up Session</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this follow-up session? This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteFollowUp}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

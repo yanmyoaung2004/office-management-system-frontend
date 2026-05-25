@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import type { ExamSchedule, ExamPaper, ExamPaperComponent } from "@/types";
+import type { ExamSchedule, ExamPaper } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowLeft,
   Upload,
   Download,
-  Trash2,
   AlertCircle,
   FileCheck,
   FileText,
@@ -216,7 +215,10 @@ export default function ExamDetailPage() {
         onExportCSV={handleMajorsExportCSV}
         papers={exam.papers}
         components={exam.papers.flatMap((p) =>
-          (p.components || []).map((c) => ({ ...c, subject_name: p.subject_name }))
+          (p.components || []).map((c) => ({
+            ...c,
+            subject_name: p.subject_name,
+          })),
         )}
         students={students}
         examId={exam.id || examId}
@@ -286,7 +288,7 @@ export default function ExamDetailPage() {
                     key={paper.id}
                     className="group overflow-hidden border-slate-200 transition-all hover:shadow-lg hover:border-primary/20"
                   >
-                    <CardHeader className="pb-4 border-b bg-white">
+                    <CardHeader className="pb-4 border-b bg-card">
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
                           <CardTitle className="text-lg font-bold text-slate-800 group-hover:text-primary transition-colors">
@@ -318,10 +320,7 @@ export default function ExamDetailPage() {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Badge
-                                variant="secondary"
-                                className="capitalize"
-                              >
+                              <Badge variant="secondary" className="capitalize">
                                 {comp.type?.toLowerCase()}
                               </Badge>
                               <span className="text-xs text-muted-foreground">
@@ -355,9 +354,7 @@ export default function ExamDetailPage() {
                             </div>
                           ) : (
                             <div
-                              onDrop={(e) =>
-                                handleDrop(e, comp.id as number)
-                              }
+                              onDrop={(e) => handleDrop(e, comp.id as number)}
                               onDragOver={handleDragOver}
                               onDragEnter={() =>
                                 setDraggedCompId(comp.id as number)
@@ -429,7 +426,7 @@ export default function ExamDetailPage() {
             placeholder="Search by name, code, description..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-white text-sm pt-2"
+            className="flex-1 bg-card text-sm pt-2"
           />
         </CardHeader>
         <CardContent>
@@ -487,7 +484,8 @@ export default function ExamDetailPage() {
                                 <span>
                                   {Math.round(
                                     (matchingResult.marksObtained /
-                                      matchingResult.component.marks_allocated) *
+                                      matchingResult.component
+                                        .marks_allocated) *
                                       100 *
                                       100,
                                   ) / 100}{" "}

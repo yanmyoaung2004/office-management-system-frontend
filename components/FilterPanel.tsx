@@ -144,8 +144,8 @@ export default function FilterPanel({
 
           {/* Year Major Filter (Conditional) */}
           {filters.selectedYear && availableMajors.length > 0 && (
-            <div className="ml-4 pt-2 border-l-2 border-gray-200 pl-4 space-y-2">
-              <p className="text-sm text-gray-600">
+            <div className="ml-4 pt-2 border-l-2 border-border pl-4 space-y-2">
+              <p className="text-sm text-muted-foreground">
                 Filter by Major for {filters.selectedYear}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -197,8 +197,8 @@ export default function FilterPanel({
             ))}
           </div>
           {selectedMajor && (
-            <div className="ml-4 pt-2 border-l-2 border-gray-200 pl-4 space-y-2">
-              <p className="text-sm text-gray-600">
+            <div className="ml-4 pt-2 border-l-2 border-border pl-4 space-y-2">
+              <p className="text-sm text-muted-foreground">
                 Filter by Intake for {selectedMajor}
               </p>
               <div className="flex flex-wrap gap-2">
